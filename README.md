@@ -1,20 +1,20 @@
 # Evernode monitor
 
-This nodejs script will help you in the monitoring and managing all of your evernodes accounts (including reputation accounts). 
+This NodeJS script will help you monitor and manage your evernode and reputation accounts.
 
 this fork adds;
-    wallet_setup module,
-    monitor_claimreward module,
-    the abbility to run each module manually by using the module name after `node evernode_monitor.js`,
-    auto fee escalation/calculation,
-    FULL wallet_manager GUI,
-    evernode deploy script access,
-    and also fixes a number of bugs.
+  -  wallet_setup module,
+  -  monitor_claimreward module,
+  -  the ability to run each module manually by using the module name after `node evernode_monitor.js`,
+  -  auto fee escalation/calculation,
+  -  FULL wallet_manager GUI,
+  -  evernode deploy script access,
+  -  and also fixes a number of bugs.
 
-It is made of 5 modules, heres a overview, with links to a more detailed description...
+it is split into 5 separate modules, they can be made to run one after another, or via command line argument one at a time.
+accounts can be read from key_pair .txt files, or incorporated into the main .env file.
 
 # Table of Contents
----
 
 - [How to install](#how-to-install)
     - [Wallet Management](#1st-wallet-management)
@@ -44,11 +44,11 @@ you run it with this one simple command ..
 
     bash -c "$(wget -qLO - https://raw.githubusercontent.com/gadget78/evernode-deploy-monitor/main/deploy.sh)"
 
-you get direct access to run each module, installing of cronjob so it will automiously run the modules, installing Uptime Kuma, easy access to key pair files, .env file, and help files.
+you get direct access to run each module, installing of cronjob so it will autonomously run the modules, installing Uptime Kuma, easy access to key pair files, .env file, and help files.
 
-this can also be used to create testnet funded wallets, when initally started.
+this can also be used to create testnet funded wallets, when initially started.
 
-this all works under most linux enviroments, depending where you run it, will depend on what menu system you get...
+this all works under most Linux environments, depending where you run it, will depend on what menu system you get...
 
 ### Proxmox
 
@@ -91,7 +91,7 @@ then you can either run it based on how the .env is setup
 node evernode_monitor.js
 ```
 
-OR you can run each individual "module" seperatly with `node evernode_monitor.js <module>`
+OR you can run each individual "module" separately with `node evernode_monitor.js <module>`
 
 `<module>` being one of the module listed above for example, if you wanted to just initiate a funds sweep, you would do..
 
@@ -101,7 +101,7 @@ node evernode_monitor.js transfer_funds
 
 You can now setup a scheduled task that runs the script regularly using cronjob.
 
-where you can even tailer different cronjobs to happen at different times, using the module name after.
+where you can even tailor different cronjobs to happen at different times, using the module name after.
 
 The example below runs the monitor_heartbeat script every 30 minutes (and logs the results to a file called logs.log)
 which would typically used for the setup to support uptime kuma
@@ -120,17 +120,17 @@ some cron documentation: https://www.cherryservers.com/blog/how-to-use-cron-to-a
     
 this is a tool to setup Wallets for use in evernode
 
-this module exclusively uses key pair files, the files used depends on the .env entrys `keypair_file`, and `keypair_rep_file` (so i will refer to that from here on)
+this module exclusively uses key pair files, the files used depends on the .env entries `keypair_file`, and `keypair_rep_file` (so i will refer to that from here on)
 
 these use the same format as many opensource (vanity) wallet generators, where layout per line is; 
 
  `Address: rzErPRJ178T5ZKN7AjVYLphYo7HP84spT      Seed: sEdVLsDtbUT44ZaovrmHvxnTCtzP8FG`
 
-for example this github is a perfect source of a vanity account generator,
+for example this GitHub is a perfect source of a vanity account generator,
 
 https://github.com/nhartner/xrp-vanity-address
 
-(which gives many ways to run it, with its main output format of above, and what key_pair.txt needs to be in and why i used that format)
+(which gives many ways to run it, with its main output format of above, and what key_pair.txt needs to be in and why I used that format)
 
 FIRST line of `keypair_file`, is used for the source of XAH and EVR (when checking, sweeping, topping up other accounts), it is also used as the "regular key"
 
@@ -141,7 +141,7 @@ and the Secondary file `keypair_rep_file` is used JUST for all your reputation a
 
 so when module is ran, 
 
-it 1st sends `xahSetupamount` amount to activate the account (setting this to 0 will skip this stage, be carefule if account isnt already registered), 
+it 1st sends `xahSetupamount` amount to activate the account (setting this to 0 will skip this stage, be careful if account isn't already registered), 
 
 it then sets the trustline, (this is skipped if `evrSetupamount` / `evrSetupAmount_rep is set to 0 ) 
 
@@ -150,7 +150,7 @@ and then sends `evrSetupamount` amount of EVR for evernode accounts, or `evrSetu
 and then sets the "regular key", the address it used is the "source account" address. ( so you can use this module to JUST set regular keys if xah and evr are both set to zero)
 
 
-after it completes the above on all accounts succesfully, 
+after it completes the above on all accounts successfully, 
 
 it then pushes this setup to the .env file (updating/replacing what was already there)
 
@@ -158,17 +158,17 @@ populating, the `accounts` (using 2nd line onwards of the keypair_file )
 
 and populating `reputationAccounts` (using all the addresses in keypair_rep_file)
 
-along with setting `evrDestinationAccount`, `sourceAccount` and `secret` of that 1st listed addresss in keypair_file
+along with setting `evrDestinationAccount`, `sourceAccount` and `secret` of that 1st listed address in keypair_file
 
 
 ## 2 transfer_funds
 
 *source, and destination accounts can be one of your evernode accounts or a unique address of your choice.*
-*and the EVR destinaton account, can be an exchange as tag is supported.*
+*and the EVR destination account, can be an exchange as tag is supported.*
 
 This script cycles through your all "accounts" depending on `reputation_transfer` setting, it gets their EVR balance and if its above the `minimum_evr_transfer` value set in .env file it sends all of the EVR balance to your first EVR account. 
 
-and depending on `xah_transfer="false"` will depeend if it will also check and transfer XAH funds to. where it will leave `xah_transfer_reserve=10` amunt on the account for reserve
+and depending on `xah_transfer="false"` will depend if it will also check and transfer XAH funds to. where it will leave `xah_transfer_reserve=10` amount on the account for reserve
 
 
 This script uses a single signing address, that requires the same Regular Key to be set on all accounts.
@@ -184,7 +184,7 @@ Setting the regular key on a Xahau account, will let you sign the transactions u
 ## 3 monitor_balance
 
 *source, and destination accounts can be one of your evernode accounts or a unique address of your choice.*
-*and the EVR destinaton account, can be an exchange as tag is supported.*
+*and the EVR destination account, can be an exchange as tag is supported.*
 
 As a minimum amount of XAH is required to run an evernode host (for TX fees), this script with check the balance and
 
@@ -201,7 +201,7 @@ This module ONLY checks XAH on "accounts" and on reputation Accounts it will als
 
 This script cycles through your accounts and checks whether each account sent a heartbeat transaction in the last N (configurable) minutes.
 In cases where no heartbeat is found an alert is sent,
-two alert types can be confinured;
+two alert types can be configured;
  - to a configured email address, 
  where the alert email is repeated after N (configurable) minutes in case the down is not solved. A restore email is sent as soon as the issue is solved.
  - to a configured "uptime robot" / "uptime kuma", via a push URL monitor type
@@ -214,20 +214,20 @@ In order to send emails from the script you need an SMTP server. Follow these in
 
 - uptime robot, can be found and signed upto here, https://uptimerobot.com/ you would need the paid version to get "heartbeat monitoring" to support the type this uses
 
-- uptime kuma, can be found on github, where there are simple install instructions, https://github.com/louislam/uptime-kuma this is the free open source, self host, of uptime robot
-follow install intsructions above, once created logins etc, you "add new monitor", selecting "push" monitor type, which is under the passive listing, fill in frendly name, use 1800 seconds (30 mins), 
+- uptime kuma, can be found on GitHub, where there are simple install instructions, https://github.com/louislam/uptime-kuma this is the free open source, self host, of uptime robot
+follow install instructions above, once created logins etc, you "add new monitor", selecting "push" monitor type, which is under the passive listing, fill in friendly name, use 1800 seconds (30 mins), 
 then paste/use the "Push URL" in the .env file, as below
 
-(you can use my wallet-managemt GUI to install and setup this also)
+(you can use my wallet-manager GUI to install and setup this also)
 
 once configured, you add the push URLs within the `push_addresses` section in the .env file, in a list form like you do in the `accounts` section.
-push_addresses, should ONLY incluse the URL and NOT the query, so DO NOT include the `?status=up&msg=OK&ping=` part of the URL, for example could look like this, http://192.168.0.100:3001/api/push/Cyn0DuXkVi
-where each line indexes and corrosponds to the accounts line. so the 1st listed URL in push_addresses will be used for the 1st listed account, and 2nd listed for 2nd account etc etc... 
+push_addresses, should ONLY include the URL and NOT the query, so DO NOT include the `?status=up&msg=OK&ping=` part of the URL, for example could look like this, http://192.168.0.100:3001/api/push/Cyn0DuXkVi
+where each line indexes and corresponds to the accounts line. so the 1st listed URL in push_addresses will be used for the 1st listed account, and 2nd listed for 2nd account etc etc... 
 
 ## 5 monitor_claimreward
 
 the script will cycle through all accounts, and;
- - check to see if itis  registered on the "balance adjustment hook"
+ - check to see if it is  registered on the "balance adjustment hook"
  - if it is NOT registered, it will register, and move onto the next account
  - if the account is already registered, it will check the date that it can claim,
  - and if its eligible for any rewards, will claim them.
@@ -238,7 +238,7 @@ the script will cycle through all accounts, and;
 
 ## 1st method
 
-if using the 1st method above, this will ALWAYS pull the latest version.. and keep the local depndancies up to date .. 
+if using the 1st method above, this will ALWAYS pull the latest version.. and keep the local dependencies up to date .. 
 
 ## 2nd method
 
@@ -275,5 +275,5 @@ This was all made possible by [@inv4fee2020](https://github.com/inv4fee2020/), t
 A special thanks & shout out to the following community members for their input & testing;
 - the original forks from [@jellicoe](https://github.com/jellicoe) and [@genesis-one-seven](https://github.com/genesis-one-seven)
 - @XRPSaint for support, and testing.
-- [@tequdev](https://github.com/tequdev/xahau-reward-claim) for his work here on claim-rewards, his work open-source web portal help greatly in the claimreward module
+- [@tequdev](https://github.com/tequdev/xahau-reward-claim) for his work here on claim-rewards, his open-source web portal helped greatly in the claimreward module
 - many other people within the discord community that helped testing

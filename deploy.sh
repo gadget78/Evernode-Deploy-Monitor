@@ -1,5 +1,5 @@
 #!/bin/bash
-ver=1.5
+ver=1.6
 
 ###################################################################################
 # message functions for script
@@ -17,6 +17,7 @@ color() {
   BFR="\\r\\033[K"
   HOLD=" "
 }
+export -f color
 
 spinner() {
     local chars="/-\|"
@@ -27,43 +28,48 @@ spinner() {
         sleep 0.1
     done
 }
+export -f spinner
 
 msg_info() {
-  if [ -n "$SPINNER_PID" ] && ps -p $SPINNER_PID > /dev/null; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
   local msg="$1"
   echo -ne " ${HOLD} ${YW}${msg}   "
   spinner &
   SPINNER_PID=$!
 }
+export -f msg_info
 
 msg_info_() {
-  if [ -n "$SPINNER_PID" ] && ps -p $SPINNER_PID > /dev/null; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
   local msg="$1"
   echo -ne " ${HOLD} ${YW}${msg}   "
   spinner &
   SPINNER_PID=$!
 }
+export -f msg_info_
 
 msg_ok() {
-  if [ -n "$SPINNER_PID" ] && ps -p $SPINNER_PID > /dev/null; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
   local msg="$1"
   echo -e "${BFR} ${CM} ${GN}${msg}${CL}"
 }
+export -f msg_ok
 
 msg_error() {
-  if [ -n "$SPINNER_PID" ] && ps -p $SPINNER_PID > /dev/null; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
   local msg="$1"
   echo -e "${BFR} ${CROSS} ${RD}${msg}${CL}"
 }
+export -f msg_error
 
 # setup error catching
-SPINNER_PID=""
+export SPINNER_PID=""
 set -Eeuo pipefail
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
 trap cleanup EXIT
 function error_handler() {
   # clear
-  if [ -n "$SPINNER_PID" ] && ps -p $SPINNER_PID > /dev/null; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
   local exit_code="$?"
   local line_number="$1"
   local command="$2"
@@ -76,7 +82,7 @@ function error_handler() {
 }
 
 function cleanup() {
-  if [ -n "$SPINNER_PID" ] && ps -p $SPINNER_PID > /dev/null; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -n "${SPINNER_PID// }" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
   if mountpoint -q /mnt/evernode-mount; then guestunmount /mnt/evernode-mount; fi
   popd >/dev/null
   rm -rf $TEMP_DIR
@@ -129,7 +135,7 @@ function extract_json_add_to_file() {
 }
 
 ####################################################################################
-# installing of dependancies
+# installing of dependencies
 function check_for_needed_program_installs() {
   local arg1="${1:-}"
 
@@ -138,43 +144,43 @@ function check_for_needed_program_installs() {
   
   if [ -z "$arg1" ] && ! command -v guestmount &> /dev/null; then
     msg_info_ "installing libquestfs-tools...                                                                    "
-    apt update >/dev/null 2>&1
-    apt install -y libguestfs-tools 2>&1 | awk '{ printf "\r\033[K   installing libquestfs-tools.. "; printf "%s", $0; fflush() }'
+    apt-get update >/dev/null 2>&1
+    apt-get install -y libguestfs-tools 2>&1 | awk '{ printf "\r\033[K   installing libquestfs-tools.. "; printf "%s", $0; fflush() }'
     msg_ok "libquestfs-tools installed."
   fi
   
   if ! command -v jq &> /dev/null; then
     msg_info_ "installing jq...                                                                                  "
-    apt update >/dev/null 2>&1
-    apt install -y jq 2>&1 | awk '{ printf "\r\033[K   installing jq.. "; printf "%s", $0; fflush() }'
+    apt-get update >/dev/null 2>&1
+    apt-get install -y jq 2>&1 | awk '{ printf "\r\033[K   installing jq.. "; printf "%s", $0; fflush() }'
     msg_ok "jq installed."
   fi
 
   if ! command -v git &> /dev/null; then
     msg_info_ "installing git...                                                                                  "
-    apt update >/dev/null 2>&1
-    apt install -y git 2>&1 | awk '{ printf "\r\033[K   installing git.. "; printf "%s", $0; fflush() }'
+    apt-get update >/dev/null 2>&1
+    apt-get install -y git 2>&1 | awk '{ printf "\r\033[K   installing git.. "; printf "%s", $0; fflush() }'
     msg_ok "git installed."
   fi
 
   if ! command -v dialog &> /dev/null; then
-    msg_info_ "installing dialog...                                                                                  "
-    apt update >/dev/null 2>&1
-    apt install -y dialog 2>&1 | awk '{ printf "\r\033[K   installing dialog.. "; printf "%s", $0; fflush() }'
+    msg_info_ "installing dialog...                                                                                "
+    apt-get update >/dev/null 2>&1
+    apt-get install -y dialog 2>&1 | awk '{ printf "\r\033[K   installing dialog.. "; printf "%s", $0; fflush() }'
     msg_ok "dialog installed."
   fi
 
   if ! command -v bc &> /dev/null; then
-    msg_info_ "installing bc...                                                                                  "
-    apt update >/dev/null 2>&1
-    apt install -y bc 2>&1 | awk '{ printf "\r\033[K   installing bc.. "; printf "%s", $0; fflush() }'
+    msg_info_ "installing bc...                                                                                    "
+    apt-get update >/dev/null 2>&1
+    apt-get install -y bc 2>&1 | awk '{ printf "\r\033[K   installing bc.. "; printf "%s", $0; fflush() }'
     msg_ok "bc installed."
   fi
 
   if ! command -v unzip &> /dev/null; then
     msg_info_ "installing unzip...                                                                                  "
-    apt update >/dev/null 2>&1
-    apt install -y unzip 2>&1 | awk '{ printf "\r\033[K   installing unzip.. "; printf "%s", $0; fflush() }'
+    apt-get update >/dev/null 2>&1
+    apt-get install -y unzip 2>&1 | awk '{ printf "\r\033[K   installing unzip.. "; printf "%s", $0; fflush() }'
     msg_ok "unzip installed."
   fi
 
@@ -229,6 +235,7 @@ function check_for_needed_program_installs() {
 
   msg_ok "all dependencies checked, and installed."
 }
+export -f check_for_needed_program_installs
 
 ####################################################################################################################################################
 ###################################################################################
@@ -921,7 +928,7 @@ Do you want to use the above settings to install monitor?" 32 104; then
               
 
               msg_info_ "installing pm2...                                                                                    "
-              apt update >/dev/null 2>&1
+              apt-get update >/dev/null 2>&1
               npm install pm2 -g 2>&1 | awk '{ gsub(/[\r\n\t\v\f\b\033\/\-\|\\]/, ""); printf "\033[K\r     \033[33minstalling pm2.. \033[0m%s", substr($0, 1, 75) }' || msg_error "installing pm2" || true
               pm2 install pm2-logrotate -g 2>&1| awk '{ gsub(/[\r\n\t\v\f\b\033\/\-\|\\]/, ""); printf "\033[K\r     \033[33minstalling pm2-logrotate.. \033[0m%s", substr($0, 1, 75) }' || true
               msg_ok "pm2 installed."
@@ -1096,12 +1103,12 @@ EOF
 function install_npmplus() {
   clear
   cat <<"EOF"
-    _   __      _               ____                           __  ___                                 
-   / | / /___ _(_)___  _  __   / __ \_________ __  ____  __   /  |/  /___ _____  ____ _____ ____  _____
-  /  |/ / __  / / __ \| |/_/  / /_/ / ___/ __ \| |/_/ / / /  / /|_/ / __  / __ \/ __  / __  / _ \/ ___/
- / /|  / /_/ / / / / />  <   / ____/ /  / /_/ />  </ /_/ /  / /  / / /_/ / / / / /_/ / /_/ /  __/ /    
-/_/ |_/\__, /_/_/ /_/_/|_|  /_/   /_/   \____/_/|_|\__, /  /_/  /_/\__,_/_/ /_/\__,_/\__, /\___/_/      PLUS
-      /____/                                      /____/                            /____/             
+ _ _  ___  __ __       _
+| \ || . \|  \  \ ___ | | _ _  ___
+|   ||  _/|     || . \| || | |[_-[
+|_\_||_|  |_|_|_||  _/|_| \__|/__/
+                 |_|
+-------------------------------------
  
 EOF
   echo -e "Loading..."
@@ -1151,7 +1158,7 @@ EOF
   
   build_container
 
-  lxc-attach -n "$CTID" -- bash -c "$(wget -qLO - https://gadget78.uk/npmplus-install.sh)" || msg_error "fault setting up container"; exit
+  lxc-attach -n "$CTID" -- bash -c "$(wget -qLO - https://gadget78.uk/npmplus-install.sh)" || { msg_error "fault setting up container"; exit; }
 
   IP=$(pct exec "$CTID" ip a s dev eth0 | awk '/inet / {print $2}' | cut -d/ -f1)
   pct set "$CTID" -description "<div align='center'><a href='https://github.com/ZoeyVid/NPMplus'><img src='https://github.com/ZoeyVid/NPMplus/blob/2024-07-11-r1/frontend/app-images/logo-text-vertical-grey.png?raw=true' /></a>
@@ -1160,7 +1167,6 @@ EOF
 
 <a href='https://Helper-Scripts.com' target='_blank' rel='noopener noreferrer'><img src='https://raw.githubusercontent.com/tteck/Proxmox/main/misc/images/logo-81x112.png'/></a></div>"
 
-  echo "checkpoint"
   exit
 
 }
@@ -1189,7 +1195,7 @@ contact @gadget78 with your code $ENTRY_STRING
 or just try again in 15 mins" 10 58
       exit
     else
-      bash -c "$(wget -qLO - https://deploy.zerp.network/$ENTRY_STRING.sh)"
+      bash -c "$(wget -qLO - https://deploy.zerp.network/$ENTRY_STRING.sh)" || true
     fi
   else
     whiptail --backtitle "Proxmox VE Helper Scripts: Wallet Management. version $ver" --msgbox "unable to connect to deploy server?
@@ -1247,8 +1253,8 @@ function start_() {
 }
 if ! command -v curl &> /dev/null; then
   echo "installing curl .... "
-  apt update >/dev/null 2>&1
-  apt install -y curl 2>&1
+  apt-get update >/dev/null 2>&1
+  apt-get install -y curl 2>&1
 fi
 export timezone=$(cat /etc/timezone)
 color

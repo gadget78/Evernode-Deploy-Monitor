@@ -204,11 +204,19 @@ async function monitor_balance(){
   consoleLog("checking XAH levels on all " + accounts.length + " accounts and " + reputationAccounts.length + " reputation accounts, with total amount of " + allAccounts.length + " to check...");
   logVerbose(`allAccounts --> ${allAccounts}`);
   console.log(" ------- ");
+  console.log(" ");
 
   for (const account of allAccounts) {
-    const { account_data } = await client.send({ command: "account_info", account: account });
-    var sourceData = await client.send({ command: "account_info", account: sourceAccount });
-    var sequence = sourceData.account_data.Sequence;
+    try {
+      var { account_data } = await client.send({ command: "account_info", account: account });
+      var sourceData = await client.send({ command: "account_info", account: sourceAccount });
+      var sequence = sourceData.account_data.Sequence;
+    } catch (err){
+      console.error(`Error getting account info, has account(${account}) and sourceAccount(${sourceAccount}) been activated yet? is ${network} the correct network?`);
+      logVerbose("error returned ->" + err);
+      tesSUCCESS = false;
+      continue
+    }
 
     if (account != sourceAccount) {
       if (reputationAccounts.includes(account)) {
@@ -278,16 +286,23 @@ async function monitor_balance(){
   
   if (reputationAccounts != [] ) {
     console.log("")
-    console.log(" ######### ")
+    console.log(" ------- ");
     console.log("")
     consoleLog("checking EVR levels on " + reputationAccounts.length + " reputation accounts...");
     consoleLog(" ------- ");
     accountIndex = 1;
     for (const account of reputationAccounts) {
 
-      const { account_data } = await client.send({ command: "account_info", account: account });
-      var sourceData = await client.send({ command: "account_info", account: sourceAccount });
-      var sequence = sourceData.account_data.Sequence;
+      try {
+        const { account_data } = await client.send({ command: "account_info", account: account });
+        var sourceData = await client.send({ command: "account_info", account: sourceAccount });
+        var sequence = sourceData.account_data.Sequence;
+      } catch (err){
+        console.error(`Error getting account info, has account(${account}) and sourceAccount(${sourceAccount}) been activated yet? is ${network} the correct network?`);
+        logVerbose("error returned ->" + err);
+        tesSUCCESS = false;
+        continue
+      }
 
       if (account != sourceAccount) {
         var evrBalance = await GetEvrBalance(account);
@@ -358,6 +373,8 @@ async function monitor_balance(){
     }
 
   }
+  console.log(" ");
+  console.log(" ---------------- ");
   if (tesSUCCESS){
     var sourceData = await client.send({ command: "account_info", account: sourceAccount });
     let XAHsourceBalance = sourceData?.account_data?.Balance ?? 0;
@@ -401,10 +418,17 @@ async function transfer_funds(){
     consoleLog(`start the transferring process on ${accountType} ${accountIndex}, ${account}`);
     accountIndex++;
     if (account != evrDestinationAccount) {
-      var { account_data } = await client.send({ command: "account_info", account })
-      var tesSUCCESS = true;
-      var attempt = 1;
-      var feeAmount = feeStartAmount;
+      try {
+        var tesSUCCESS = true;
+        var attempt = 1;
+        var feeAmount = feeStartAmount;
+        var { account_data } = await client.send({ command: "account_info", account })
+      } catch (err){
+        console.error(`Error getting account info, has the account(${account}) been activated yet? is ${network} the correct network?`);
+        logVerbose("error returned ->" + err);
+        tesSUCCESS = false;
+        continue
+      }
 
       while (true) {
 
@@ -727,7 +751,14 @@ async function wallet_setup(){
 
         // Send xahSetupamount XAH ( activating account )
         if (xahSetupamount != 0){
-          const { account_data: { Sequence: sequence } } = await client.send({ command: "account_info", account: sourceAccount });
+          try {
+            var { account_data: { Sequence: sequence } } = await client.send({ command: "account_info", account: sourceAccount });
+          } catch (err){
+            console.error(`Error getting sequence number of source account, has the sourceAccount(${sourceAccount}) been activated yet? is ${network} the correct network?`);
+            logVerbose("error returned ->" + err);
+            tesSUCCESS = false;
+            break
+          }
           let xahTx = {
            TransactionType: 'Payment',
             Account: sourceAccount,
@@ -932,10 +963,12 @@ async function wallet_setup(){
     } else {
       consoleLog(`${YW}skipping ${account} as its the source account.${CL}`);
     };
-    consoleLog(" ---------------- ");
     consoleLog(" ");
+    consoleLog(" ---------------- ");
     loop++;
   };
+  console.log(" ");
+  consoleLog(" ---------------- ");
   if (tesSUCCESS){
     await updateEnv('sourceAccount', accounts[0]);
     await updateEnv('evrDestinationAccount', accounts[0]);
@@ -1005,8 +1038,15 @@ async function monitor_claimreward(){
   for (const account of allAccounts) {
     consoleLog("starting check on account " + account);
 
-    var { account_data } = await client.send({ command: "account_info", account })
-    var { ledger } = await client.send({ command: 'ledger', ledger_index: 'validated' })
+    try {
+      var { account_data } = await client.send({ command: "account_info", account })
+      var { ledger } = await client.send({ command: 'ledger', ledger_index: 'validated' })
+    } catch (err){
+      console.error(`Error getting account info, has account(${account}) been activated yet? is ${network} the correct network?`);
+      logVerbose("error returned ->" + err);
+      tesSUCCESS = false;
+      continue
+    }
 
     logVerbose("\naccount_data -- >" + JSON.stringify(account_data) + "\n\nledger -->" + JSON.stringify(ledger) + "\n");
 
