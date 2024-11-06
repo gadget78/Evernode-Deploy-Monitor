@@ -1184,15 +1184,17 @@ async function GetEvrBalance(account){
   let marker = ''
   let l = []
   let balance = 0
+  let balanceTrunc = 0
   while (typeof marker === 'string') {
     const lines = await client.send({ command: 'account_lines', account, marker: marker === '' ? undefined : marker })
 
     marker = lines?.marker === marker ? null : lines?.marker
     logVerbose(`trustlines found :${lines?.lines?.length}`)
-    lines?.lines?.forEach(t => {
-      if (t.currency == "EVR" && t.account == trustlineAddress) {
-        balance = Number(balance) + Number(t.balance);
-        logVerbose(`found matching trustline of ${trustlineAddress} with balance of ${balance}, full reply -> ${JSON.stringify(t)}`)
+    lines?.lines?.forEach(token => {
+      if (token.currency == "EVR" && token.account == trustlineAddress) {
+        balanceTrunc = Math.trunc(token.balance * 10000) / 10000; // force truncation of number, to prevent large number which fails due to tecPATH_PARTIAL
+        balance = Number(balance) + Number(balanceTrunc);
+        logVerbose(`found matching trustline of ${trustlineAddress} with balance of ${balance}, full reply -> ${JSON.stringify(token)}`)
         return isNaN(Number(balance)) ? 0 : Number(balance);
       }
     })
