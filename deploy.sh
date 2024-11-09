@@ -1114,6 +1114,14 @@ EOF
   echo -e "Loading..."
   source <(curl -s https://raw.githubusercontent.com/tteck/Proxmox/main/misc/build.func)
   APP="NginxProxyManagerPlus"
+  SPINNER_PID=""
+
+  if ! (whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP} LXC" --yesno "This will create a New ${APP} LXC. Proceed?" 10 58); then
+    clear
+    echo -e "⚠  User exited script \n"
+    exit
+  fi
+
   export var_disk="4"
   export var_cpu="2"
   export var_ram="2048"
@@ -1144,16 +1152,57 @@ EOF
   export SSH="no"
   export VERB="no"
   export STD=""
+  export install_version="latest"
+  export install_portainer="false"
+  echo -e "${DGN}NPM+ version to install: ${BGN}$install_version${CL}"
+  echo -e "${DGN}Install Portainer?: ${BGN}$install_portainer${CL}"
   echo_default
 
-  if ! (whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP} LXC" --yesno "This will create a New ${APP} LXC. Proceed?" 10 58); then
-    clear
-    echo -e "⚠  User exited script \n"
-    exit
-  fi
-  SPINNER_PID=""
-  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP} LXC" --yesno "change advanced settings?" 10 58); then
+  while true; do
+    printf "Change above default settings? (y/n): "
+    read -r change_settings
+    change_settings="${change_settings:-n}"  # Default to 'n' if empty
+    case "$change_settings" in
+      [yY]|[yY][eE][sS]) 
+        change_settings="y"
+        break
+        ;;
+      [nN]|[nN][oO]) 
+        change_settings="n"
+        break
+        ;;
+      *)
+        echo "Please enter 'y' or 'n'."
+        ;;
+    esac
+  done
+
+  if [[ "$change_settings" == "y" ]]; then
     advanced_settings
+
+    if (whiptail --backtitle "Proxmox VE Helper Scripts" --defaultno --title "Portainer" --yesno "Install portainer?" 10 58); then
+      export install_portainer="true"
+    else
+      export install_portainer="false"
+    fi
+    echo -e "${DGN}Install Portainer?: ${BGN}$install_portainer${CL}"
+
+    while true; do
+      if install_version=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "what version of NPMplus do you want to install?" 8 58 "$install_version" --title "NPM+ version" 3>&1 1>&2 2>&3); then
+        if [[ "$install_version" =~ ^[0-9]+$ ]] && (( install_version >= 340 && install_version <= 800 )); then
+          echo -e "${DGN}NPM+ version to install: ${BGN}$install_version${CL}"
+          break
+        elif [[ "$install_version" == "latest" ]]; then
+          echo -e "${DGN}NPM+ version to install: ${BGN}$install_version${CL}"
+          break
+        else
+          whiptail --backtitle "Proxmox VE Helper Scripts" --msgbox "verrsion needs to be latest, or a number between 340 and 800" 8 64
+          install_version="latest"
+        fi
+      else
+        exit-script
+      fi
+    done
   fi
   
   build_container
