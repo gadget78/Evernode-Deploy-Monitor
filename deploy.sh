@@ -22,47 +22,64 @@ export -f color
 spinner() {
     local chars="/-\|"
     local spin_i=0
-    printf "\e[?25l"
+    if [[ -t 1 ]]; then printf "\e[?25l"; fi  # Hide cursor
     while true; do
-        printf "\r \e[36m%s\e[0m" "${chars:spin_i++%${#chars}:1}"
-        sleep 0.1
+      printf "\r \e[36m%s\e[0m" "${chars:spin_i++%${#chars}:1}"
+      sleep 0.1
     done
 }
 export -f spinner
 
 msg_info() {
-  if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
-  local msg="$1"
-  echo -ne " ${HOLD} ${YW}${msg}   "
-  spinner &
-  SPINNER_PID=$!
+    if [[ -n "$SPINNER_PID" ]] && ps -p "$SPINNER_PID" >/dev/null 2>&1; then
+      kill "$SPINNER_PID" > /dev/null
+      if [[ -t 1 ]]; then printf "\e[?25h"; fi # Show cursor
+    fi
+    local msg="$1"
+    printf "%b" " ${HOLD} ${YW}${msg}   "
+    if [[ -t 1 ]]; then
+        spinner &
+        SPINNER_PID=$!
+    fi
 }
 export -f msg_info
 
 msg_info_() {
-  if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
-  local msg="$1"
-  echo -ne " ${HOLD} ${YW}${msg}   "
-  spinner &
-  SPINNER_PID=$!
+    if [[ -n "$SPINNER_PID" ]] && ps -p "$SPINNER_PID" >/dev/null 2>&1; then
+      kill "$SPINNER_PID" > /dev/null
+      if [[ -t 1 ]]; then printf "\e[?25h"; fi # Show cursor
+    fi
+    local msg="$1"
+    printf "%b" " ${HOLD} ${YW}${msg}   "
+    if [[ -t 1 ]]; then
+        spinner &
+        SPINNER_PID=$!
+    fi
 }
 export -f msg_info_
 
 msg_ok() {
-  if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -n "${SPINNER_PID// }" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then 
+    kill $SPINNER_PID > /dev/null
+    if [[ -t 1 ]]; then printf "\e[?25h"; fi # Show cursor
+  fi
   local msg="$1"
-  echo -e "${BFR} ${CM} ${GN}${msg}${CL}"
+  printf "%b" "${BFR} ${CM} ${GN}${msg}${CL}\n"
 }
 export -f msg_ok
 
 msg_error() {
-  if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -n "${SPINNER_PID// }" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then
+    kill $SPINNER_PID > /dev/null
+    if [[ -t 1 ]]; then printf "\e[?25h"; fi # Show cursor
+  fi
   local msg="$1"
-  echo -e "${BFR} ${CROSS} ${RD}${msg}${CL}"
+  printf "%b" "${BFR} ${CROSS} ${RD}${msg}${CL}\n"
 }
 export -f msg_error
 
-# setup error catching
+###########################################################################################################################################################
+
 export SPINNER_PID=""
 set -Eeuo pipefail
 trap 'error_handler $LINENO "$BASH_COMMAND"' ERR
@@ -70,6 +87,7 @@ trap cleanup EXIT
 function error_handler() {
   # clear
   if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -t 1 ]]; then printf "\e[?25h"; fi # Show cursor
   local exit_code="$?"
   local line_number="$1"
   local command="$2"
@@ -78,18 +96,23 @@ function error_handler() {
   if mount | grep -q '/mnt/evernode-mount'; then
     guestunmount /mnt/evernode-mount/
   fi
+  if mount | grep -q '/mnt/NPMplus-VM'; then
+    guestunmount /mnt/NPMplus-VM/
+  fi
   msg_error "an error occured, see above, cleared created temp directoy ($TEMP_DIR), and cleanly exiting..."
 }
 
 function cleanup() {
-  if [[ -n "${SPINNER_PID// }" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -n "$SPINNER_PID" ]] && ps -p $SPINNER_PID >/dev/null 2>&1; then kill $SPINNER_PID > /dev/null && printf "\e[?25h"; fi
+  if [[ -t 1 ]]; then printf "\e[?25h"; fi # Show cursor
   if mountpoint -q /mnt/evernode-mount; then guestunmount /mnt/evernode-mount; fi
-  popd >/dev/null
-  rm -rf $TEMP_DIR
+  if mountpoint -q /mnt/NPMplus-VM; then guestunmount /mnt/NPMplus-VM; fi
+  popd >/dev/null 2>&1 || true
+  rm -rf $TEMP_DIR >/dev/null 2>&1 || true
 }
 
 function exit-script() {
-  clear
+  #clear
   echo -e "⚠  User exited script \n"
   exit
 }
@@ -222,8 +245,8 @@ function check_for_needed_program_installs() {
       NODE_MAJOR=20
       echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
       apt-get update | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
-      apt-get -y install nodejs | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
-    msg_ok "npm installed, needs loging out and back in to take effect"
+      apt-get -y install nodejs npm | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+    msg_ok "npm installed, may need logging out and back in to take effect"
   fi
 
   if [ "$(node -e "try { require.resolve('ws'); console.log('true'); } catch (e) { console.log('false'); }")" = "false" ]; then
@@ -242,12 +265,12 @@ export -f check_for_needed_program_installs
 function wallet_management_script() {
   clear
   cd /root/
-  msg_info "pre-checks..."
+  msg_info_ "pre-checks..."
   check_for_needed_program_installs "no_guestmount_check"
   if [ -d "/root/evernode-deploy-monitor" ]; then
     echo "Pulling latest changes from github..."
     cd "/root/evernode-deploy-monitor"
-    git pull
+    git pull || msg_error "unable to pull latest from git at present time?"
   else
     echo "Cloning https://github.com/gadget78/Evernode-Deploy-Monitor repository..."
     git clone https://github.com/gadget78/Evernode-Deploy-Monitor /root/evernode-deploy-monitor
@@ -878,10 +901,10 @@ Do you want to use the above settings to check \"$total_accounts\" account regis
 
 Do you want to use the above settings to install monitor?" 32 104; then
           clear
-          existing_crontab=$(crontab -l 2>/dev/null) || echo ""
+          existing_crontab=$(crontab -l 2>/dev/null) || existing_crontab=""
           cronjob_main="* */$cronjob_main_hours * * * . $HOME/.bashrc && node /root/evernode-deploy-monitor/evernode_monitor.js"
           cronjob_heartbeat="*/$cronjob_heartbeat_mins * * * * . $HOME/.bashrc && node /root/evernode-deploy-monitor/evernode_monitor.js monitor_heartbeat"
-          if crontab -l | grep -q "/usr/bin/node /root/evernode-deploy-monitor/evernode_monitor.js"; then
+          if crontab -l | grep -q "node /root/evernode-deploy-monitor/evernode_monitor.js"; then
               existing_crontab=$(echo "$existing_crontab" | sed 'node \/root\/evernode-deploy-monitor\/evernode_monitor\.js/d')
               existing_crontab=$(echo "$existing_crontab" | sed 'node \/root\/evernode-deploy-monitor\/evernode_monitor\.js/d')
               if [ "$cronjob_main_hours" != "0" ]; then existing_crontab="${existing_crontab}"$'\n'"${cronjob_main}" ;fi
@@ -1109,120 +1132,727 @@ function install_npmplus() {
 |_\_||_|  |_|_|_||  _/|_| \__|/__/
                  |_|
 -------------------------------------
- 
+
 EOF
   echo -e "Loading..."
   source <(curl -s https://raw.githubusercontent.com/tteck/Proxmox/main/misc/build.func)
   APP="NginxProxyManagerPlus"
   SPINNER_PID=""
+  check_for_needed_program_installs
 
-  if ! (whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP} LXC" --yesno "This will create a New ${APP} LXC. Proceed?" 10 58); then
-    clear
-    echo -e "⚠  User exited script \n"
-    exit
+  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP}" --yesno "Do you want to Install, or Update NPMplus?" 10 58 --yes-button "Update" --no-button "Install" --defaultno); then
+    export install_npmplus="false"
+    export install_version="latest"
+    cluster_resources=$(pvesh get /cluster/resources --output-format=json)
+    while true; do
+      if UPDATE_ID=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "Enter your NPMplus CT or VM ID" 8 58 "100" --title "VM/CT ID" 3>&1 1>&2 2>&3); then
+        if ! [[ $UPDATE_ID =~ $INTEGER ]]; then
+          whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "⚠ ID MUST BE AN INTEGER NUMBER" 8 58
+        elif ! jq -r '.[].vmid' <<< "$cluster_resources" | grep -q "^$UPDATE_ID$"; then
+          whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "ID ${UPDATE_ID}, doesnt exist" 8 58
+        elif [[ $(jq -r ".[] | select(.vmid == $UPDATE_ID) | .status" <<< "$cluster_resources") != "running" ]]; then
+          whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "ID ${UPDATE_ID}, needs to be running" 8 58
+        elif [[ $(jq -r ".[] | select(.vmid == $UPDATE_ID) | .type" <<< "$cluster_resources") != "lxc" ]] && ! qm guest cmd $UPDATE_ID ping > /dev/null 2>&1; then
+          whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "ID ${UPDATE_ID}, is a VM, but doesnt have a running guest agent" 8 58
+        else
+          break
+        fi
+      else
+        exit-script
+      fi
+    done
+    if [[ $(jq -r ".[] | select(.vmid == $UPDATE_ID) | .type" <<< "$cluster_resources") == "lxc" ]]; then
+      lxc-attach -n "$UPDATE_ID" -- bash -c "$(wget -qLO - https://gadget78.uk/npmplus-install.sh)" && msg_ok "NPM plus sucessfully updated" || { msg_error "fault setting up container"; exit; }
+    else
+      msg_info_ "${DGN}VM detected and running, connecting to issue update commands...${CL}"
+      # Execute the command on the guest VM and capture the JSON response
+      UPDATE_response=$(qm guest exec $UPDATE_ID --timeout 180 -- bash -c "$(wget -qLO - https://gadget78.uk/npmplus-install.sh)" 2>&1)
+
+      # Parse JSON response to check if command succeeded
+      UPDATE_error=$( { echo "$UPDATE_response" | jq -r '.["exitcode"]' || { echo "UPDATE_error capture failed"; true; }; } )
+      UPDATE_output=$( { echo "$UPDATE_response" | jq -r '.["out-data"]' || { echo "UPDATE_ouput capture failed"; true; }; } )
+
+      if [[ "$UPDATE_error" == "0" ]]; then
+          msg_ok "VM $UPDATE_ID: Updated succeeded." && echo -e "${DGN}Output:${CL}" && echo "$UPDATE_output"
+      else
+          msg_error "VM $UPDATE_ID: Update failed. Error message: full response=$UPDATE_response -- error=$UPDATE_error -- output=$UPDATE_output"
+      fi
+
+    fi
+    return
   fi
-
+  
   export var_disk="4"
   export var_cpu="2"
-  export var_ram="2048"
+  export var_ram="4096"
   export var_os="debian"
   export var_version="12"
-  variables
-  catch_errors
-  color
+
   export NEXTID=$(pvesh get /cluster/nextid)
-  export CT_TYPE="1"
-  export PW=""
-  export CT_ID=$NEXTID
-  export HN="$APP"
   export DISK_SIZE="$var_disk"
   export CORE_COUNT="$var_cpu"
   export RAM_SIZE="$var_ram"
+  export PW=""
+  export HN="$APP"
   export BRG="vmbr0"
   export NET="dhcp"
   export GATE=""
   export APT_CACHER=""
   export APT_CACHER_IP=""
   export DISABLEIP6="no"
-  export MTU=""
   export SD=""
   export NS=""
   export MAC=""
   export VLAN=""
+  export MTU=""
   export SSH="no"
   export VERB="no"
   export STD=""
+  export install_npmplus="true"
   export install_version="latest"
   export install_portainer="false"
-  echo -e "${DGN}NPM+ version to install: ${BGN}$install_version${CL}"
-  echo -e "${DGN}Install Portainer?: ${BGN}$install_portainer${CL}"
-  echo_default
+  variables
+  catch_errors
+  color
+
+  ### Install as CT
+  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP}" --yesno "Do you want to install this into a CT or VM?" 10 58  --yes-button "CT" --no-button "VM" ); then
+    export install_type="CT"
+    export CT_ID=$NEXTID
+    export CT_TYPE="1"
+    
+    echo -e "${DGN}NPM+ version to install: ${BGN}$install_version${CL}"
+    echo -e "${DGN}Install Portainer?: ${BGN}$install_portainer${CL}"
+    echo_default
 
   while true; do
-    printf "Change above default settings? (y/n): "
-    read -r change_settings
-    change_settings="${change_settings:-n}"  # Default to 'n' if empty
-    case "$change_settings" in
-      [yY]|[yY][eE][sS]) 
-        change_settings="y"
+    if NET=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP}" --inputbox "Set IPv4 Address" 8 58 $NET --title "IP ADDRESS" 3>&1 1>&2 2>&3); then
+      if [ -z "$NET" ]; then
+        whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP}" --msgbox "IP address cannot be empty" 8 58
+      elif [ "$NET" == "dhcp" ]; then
+        echo -e "${DGN}Using IP Address: ${BGN}$NET${CL} (over-rides above)"
         break
-        ;;
-      [nN]|[nN][oO]) 
-        change_settings="n"
-        break
-        ;;
-      *)
-        echo "Please enter 'y' or 'n'."
-        ;;
-    esac
+      elif [[ ! "$NET" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+        whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP}" --msgbox "$NET is an invalid IPv4 address. Please enter a valid IPv4 address" 8 58
+      else
+        if ! ping -c 1 -W 1 "$NET" &>/dev/null; then
+          echo -e "${DGN}Using IP Address: ${BGN}$NET${CL}"
+          NET="${NET}/24"
+          BASE_IP="$NET"
+          while true; do
+            if GATE1=$(whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP}" --inputbox "Set gateway IPv4 Address" 8 58 "192.168.0.1" --title "IP ADDRESS" 3>&1 1>&2 2>&3); then
+              if [ -z "$GATE1" ]; then
+                whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP}" --msgbox "IP address cannot be empty" 8 58
+              elif [[ ! "$GATE1" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+                whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP}" --msgbox "$GATE1 is an invalid IPv4 address. Please enter a valid IPv4 address" 8 58
+              else
+                GATE=",gw=$GATE1"
+                echo -e "${DGN}Using Gateway IP Address: ${BGN}$GATE1${CL} (over-rides above)"
+                break
+              fi
+            fi
+          done
+            if BRG=$(whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --inputbox "Set Bridge" 8 58 "vmbr0" --title "BRIDGE" 3>&1 1>&2 2>&3); then
+              if [ -z "$BRG" ]; then
+                BRG="vmbr0"
+                echo -e "${DGN}Using Bridge default: ${BGN}$BRG${CL}"
+                break 2
+              else
+                echo -e "${DGN}Using Bridge: ${BGN}$BRG${CL}"
+                break 2
+              fi
+            else
+              exit-script
+            fi
+        else
+          whiptail --backtitle "Proxmox VE Helper Scripts" --title "${APP}" --msgbox "IP Clash detected with IP(s)
+$NET" 8 64
+        fi
+      fi
+    else
+      exit-script
+    fi
   done
 
-  if [[ "$change_settings" == "y" ]]; then
-    advanced_settings
-
-    if (whiptail --backtitle "Proxmox VE Helper Scripts" --defaultno --title "Portainer" --yesno "Install portainer?" 10 58); then
-      export install_portainer="true"
-    else
-      export install_portainer="false"
-    fi
-    echo -e "${DGN}Install Portainer?: ${BGN}$install_portainer${CL}"
-
     while true; do
-      if install_version=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "what version of NPMplus do you want to install?" 8 58 "$install_version" --title "NPM+ version" 3>&1 1>&2 2>&3); then
-        if [[ "$install_version" =~ ^[0-9]+$ ]] && (( install_version >= 340 && install_version <= 800 )); then
-          echo -e "${DGN}NPM+ version to install: ${BGN}$install_version${CL}"
+      printf "Change above default settings? (y/n): "
+      read -r change_settings
+      change_settings="${change_settings:-n}"  # Default to 'n' if empty
+      case "$change_settings" in
+        [yY]|[yY][eE][sS]) 
+          change_settings="y"
           break
-        elif [[ "$install_version" == "latest" ]]; then
-          echo -e "${DGN}NPM+ version to install: ${BGN}$install_version${CL}"
+          ;;
+        [nN]|[nN][oO]) 
+          change_settings="n"
           break
-        else
-          whiptail --backtitle "Proxmox VE Helper Scripts" --msgbox "verrsion needs to be latest, or a number between 340 and 800" 8 64
-          install_version="latest"
-        fi
-      else
-        exit-script
-      fi
+          ;;
+        *)
+          echo "Please enter 'y' or 'n'."
+          ;;
+      esac
     done
-  fi
-  
-  build_container
 
-  lxc-attach -n "$CTID" -- bash -c "$(wget -qLO - https://gadget78.uk/npmplus-install.sh)" || { msg_error "fault setting up container"; exit; }
+    if [[ "$change_settings" == "y" ]]; then
+      advanced_settings
 
-  IP=$(pct exec "$CTID" ip a s dev eth0 | awk '/inet / {print $2}' | cut -d/ -f1)
-  pct set "$CTID" -description "<div align='center'><a href='https://github.com/ZoeyVid/NPMplus'><img src='https://github.com/ZoeyVid/NPMplus/blob/2024-07-11-r1/frontend/app-images/logo-text-vertical-grey.png?raw=true' /></a>
-  
+      if (whiptail --backtitle "Proxmox VE Helper Scripts" --defaultno --title "Portainer" --yesno "Install portainer?" 10 58); then
+        export install_portainer="true"
+      else
+        export install_portainer="false"
+      fi
+      echo -e "${DGN}Install Portainer?: ${BGN}$install_portainer${CL}"
+
+      while true; do
+        if install_version=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "what version of NPMplus do you want to install?" 8 58 "$install_version" --title "NPM+ version" 3>&1 1>&2 2>&3); then
+          if [[ "$install_version" =~ ^[0-9]+$ ]] && (( install_version >= 340 && install_version <= 800 )); then
+            echo -e "${DGN}NPM+ version to install: ${BGN}$install_version${CL}"
+            break
+          elif [[ "$install_version" == "latest" ]]; then
+            echo -e "${DGN}NPM+ version to install: ${BGN}$install_version${CL}"
+            break
+          else
+            whiptail --backtitle "Proxmox VE Helper Scripts" --msgbox "verrsion needs to be latest, or a number between 340 and 800" 8 64
+            install_version="latest"
+          fi
+        else
+          exit-script
+        fi
+      done
+    fi
+    
+    build_container
+
+    lxc-attach -n "$CTID" -- bash -c "$(wget -qLO - https://gadget78.uk/npmplus-install.sh)" || { msg_error "fault setting up container"; exit; }
+
+    IP=$(pct exec "$CTID" ip a s dev eth0 | awk '/inet / {print $2}' | cut -d/ -f1)
+    pct set "$CTID" -description "<div align='center'><a href='https://github.com/ZoeyVid/NPMplus'><img src='https://github.com/ZoeyVid/NPMplus/blob/2024-07-11-r1/frontend/app-images/logo-text-vertical-grey.png?raw=true' /></a>
 <a href='https://$IP:81' target='_blank'>https://${IP}:81</a>
 
 <a href='https://Helper-Scripts.com' target='_blank' rel='noopener noreferrer'><img src='https://raw.githubusercontent.com/tteck/Proxmox/main/misc/images/logo-81x112.png'/></a></div>"
 
-  exit
+    exit
+
+  ### Install as VM 
+  else
+    export install_version="latest"
+    export NEXTID=$(pvesh get /cluster/nextid)
+    export VMID=$NEXTID
+    export MACHINE=""
+    export DISK_CACHE=""
+    export FORMAT=",efitype=4m"
+    export SWAP_KBYTES="4194304"
+    export CPU_TYPE=" -cpu host"
+    export THIN="discard=on,ssd=1,"
+    export SSH_ROOT="$SSH"
+    export SSH_KEY=""
+    export TEMPLATE_STORAGE="local"
+    export cloud_init_LOCATION="/var/lib/vz/snippets/"
+    export UBUNTU_URL="https://cloud-images.ubuntu.com/minimal/releases/noble/release/ubuntu-24.04-minimal-cloudimg-amd64.img"
+    export NPMPLUS_INSTALL_URL="https://gadget78.uk/npmplus-install.sh"
+
+    BASE_IMAGE_FILE=$(basename $UBUNTU_URL)
+    if [  ! -f /tmp/$BASE_IMAGE_FILE ]; then
+      msg_info_ "no Ubuntu base image found, downloading ${CL}${BL}${UBUNTU_URL}${CL}"
+      wget -q --show-progress -O /tmp/$BASE_IMAGE_FILE $UBUNTU_URL  && msg_ok "Downloaded ${CL}${BL}${BASE_IMG_FILE}${CL}" || { msg_error "failed to download Ubuntu image file, check URL/name?,restart script to try again"; exit; }
+    else
+      msg_ok "Ubuntu base found, using $BASE_IMAGE_FILE"
+    fi
+
+    #generate cloud-init .yaml file
+    mkdir -p $cloud_init_LOCATION
+    rm -f $cloud_init_LOCATION/NPMplus_VM.yml
+    cat > $cloud_init_LOCATION/NPMplus_VM.yml <<EOF
+#cloud-config
+disable_root: false
+ssh_authorized_keys:
+  - $SSH_KEY
+write_files:
+  - path: /etc/systemd/system/getty@.service.d/autologin.conf
+    permissions: '0644'
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=-/sbin/agetty --autologin root --keep-baud %I 115200,38400,9600 \$TERM
+  - path: /etc/systemd/system/serial-getty@ttyS0.service.d/autologin.conf
+    permissions: '0644'
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=-/sbin/agetty --autologin root --keep-baud %I 115200,38400,9600 \$TERM
+  - path: /etc/profile
+    content: |
+      res() {
+
+      old=\$(stty -g)
+      stty raw -echo min 0 time 5
+
+      printf '\0337\033[r\033[999;999H\033[6n\0338' > /dev/tty
+      IFS='[;R' read -r _ rows cols _ < /dev/tty
+
+      stty "\$old"
+
+      # echo "cols:\$cols"
+      # echo "rows:\$rows"
+      stty cols "\$cols" rows "\$rows"
+      }
+
+      [ \$(tty) = /dev/ttyS0 ] && res
+swap:
+  filename: /.swapfile
+  size: ${SWAP_KBYTES}K
+growpart:
+  mode: auto
+  devices: ['/']
+  ignore_growroot_disabled: false
+runcmd:
+  - echo -e "${YW}1/6 starting cloud-init commands, 1st is apt updat/upgrade, and getting qamu-guest-agent up to watch install...${CL}"
+  - [ "/bin/systemctl", "daemon-reload" ]
+  - timedatectl set-timezone $timezone
+  - apt-get update || true
+  - apt-get upgrade -y || true
+  - apt-get install -y jq unzip qemu-guest-agent
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  - export timezone="$timezone"
+  - export install_version="$install_version"
+  - export install_npmplus="$install_npmplus"
+  - /root/npmplus-install.sh | tee /root/npmplus-install.log
+EOF
+
+    msg_info_ "(re)cloning base img..."
+    IMAGE_FILE="/tmp/cloned/$BASE_IMAGE_FILE"
+    rm -f -r /tmp/cloned/
+    mkdir /tmp/cloned/
+    cp /tmp/$BASE_IMAGE_FILE $IMAGE_FILE
+    msg_ok "img file cloned"
+    
+    msg_info_ "mounting and copying installer into place..."
+    mkdir -p /mnt/NPMplus-VM
+    guestmount -a $IMAGE_FILE -m /dev/sda1 /mnt/NPMplus-VM
+
+    wget -q -O /mnt/NPMplus-VM/root/npmplus-install.sh $NPMPLUS_INSTALL_URL || { msg_error "failed to download npmplus-install setup script for VM, restart script to try again"; exit; }
+    chmod +x /mnt/NPMplus-VM/root/npmplus-install.sh
+
+    guestunmount /mnt/NPMplus-VM
+    msg_ok "files now on img, now ready to create VM"
+
+    while read -r line; do
+      TAG=$(echo $line | awk '{print $1}')
+      TYPE=$(echo $line | awk '{printf "%-10s", $2}')
+      FREE=$(echo $line | numfmt --field 4-6 --from-unit=K --to=iec --format %.2f | awk '{printf( "%9sB", $6)}')
+      ITEM="  Type: $TYPE Free: $FREE "
+      OFFSET=2
+      if [[ $((${#ITEM} + $OFFSET)) -gt ${MSG_MAX_LENGTH:-} ]]; then
+          MSG_MAX_LENGTH=$((${#ITEM} + $OFFSET))
+      fi
+      STORAGE_MENU+=("$TAG" "$ITEM" "OFF")
+    done < <(pvesm status -content images | awk 'NR>1')
+    VALID=$(pvesm status -content images | awk 'NR>1')
+    if [ -z "$VALID" ]; then
+      msg_error "Unable to detect a valid storage location."
+      exit
+    else
+      while [ -z "${VM_STORAGE:+x}" ]; do
+        VM_STORAGE=$(whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --title "Evernode Storage Pools" --radiolist \
+        "Which storage pool you would like to use?\nTo make a selection, use the Spacebar.\n" \
+        16 $(($MSG_MAX_LENGTH + 23)) 6 \
+        "${STORAGE_MENU[@]}" 3>&1 1>&2 2>&3) || exit
+      done
+    fi
+    STORAGE="$VM_STORAGE"
+    echo -e "${DGN}Using ${BGN}$STORAGE${CL}${DGN} for Storage Location.${CL}"
+
+    STORAGE_TYPE=$(pvesm status -storage $STORAGE | awk 'NR>1 {print $2}')
+    case $STORAGE_TYPE in
+    nfs | dir)
+    DISK_EXT=".qcow2"
+    DISK_REF="$VMID/"
+    DISK_IMPORT="-format qcow2"
+    THIN=""
+    ;;
+    btrfs)
+    DISK_EXT=".raw"
+    DISK_REF="$VMID/"
+    DISK_IMPORT="-format raw"
+    THIN=""
+    ;;
+    esac
+    for i in {0,1}; do
+    disk="DISK$i"
+    eval DISK${i}=vm-${VMID}-disk-${i}${DISK_EXT:-}
+    eval DISK${i}_REF=${STORAGE}:${DISK_REF:-}${!disk}
+    done
+
+    if [[ -z "$MAC" ]]; then MAC=02:$(openssl rand -hex 5 | awk '{print toupper($0)}' | sed 's/\(..\)/\1:/g; s/.$//'); fi
+
+    msg_info_ "Creating a VM, with ID $VMID "
+    qm create $VMID -agent 1${MACHINE} -tablet 0 -localtime 1 -bios ovmf${CPU_TYPE} -cores $CORE_COUNT -memory $((RAM_SIZE)) \
+    -name "$HN" -tags proxmox-helper-scripts -net0 virtio,bridge=$BRG,macaddr=$MAC$VLAN$MTU -onboot 1 -ostype l26 -scsihw virtio-scsi-pci
+    pvesm alloc $STORAGE $VMID $DISK0 4M 1>&/dev/null || { msg_error "failed to create a VM$VMID Disk, this normally happens when this disk already exists, check the $STORAGE pool"; exit; }
+    qm importdisk $VMID ${IMAGE_FILE} $STORAGE ${DISK_IMPORT:-} 1>&/dev/null
+    qm set $VMID \
+    -efidisk0 ${DISK0_REF}${FORMAT} \
+    -scsi0 ${DISK1_REF},${DISK_CACHE}${THIN} \
+    -scsi1 ${STORAGE}:cloudinit \
+    -boot order=scsi0 \
+    -serial0 socket \
+    -ciuser root \
+    -ipconfig0 ip="$NET$GATE" \
+    -cicustom "user=${TEMPLATE_STORAGE}:snippets/NPMplus_VM.yml" \
+    -description "<div align='center'><a href='https://github.com/ZoeyVid/NPMplus'><img src='https://github.com/ZoeyVid/NPMplus/blob/2024-07-11-r1/frontend/app-images/logo-text-vertical-grey.png?raw=true' /></a>
+
+<a href='https://Helper-Scripts.com' target='_blank' rel='noopener noreferrer'><img src='https://raw.githubusercontent.com/tteck/Proxmox/main/misc/images/logo-81x112.png'/></a></div>" 1>&/dev/null
+
+    qm resize $VMID scsi0 +"${DISK_SIZE}G" 1>&/dev/null
+    msg_ok "Finished Creating VM, ID $VMID, named ${CL}${BL}(${HN})"
+
+    msg_info_ "Starting.."
+    qm start $VMID >/dev/null || msg_error "failed to start VM"
+    msg_ok "Succesfully created and Started VM, ID $VMID, $HN"
+    echo -e "${DGN}you can check how the install went, or is going from ${BGN}WITHIN${CL}${DGN} the VM(not here),"
+    echo -e "using log file, /root/npmplus-install.log"
+    echo -e "for example,"
+    echo -e "cat /root/npmplus-install.log"
+    echo -e "or"
+    echo -e "tail -f /root/npmplus-install.log${CL}"
+  fi
 
 }
 
+####################################################################################################################################################
 ###################################################################################
-function update_script() {
-    msg_info "starting xahau node script..."
+
+function npmplus_setup() {
+  while true; do
+    if NPM_URL=$(whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --inputbox "Whats your NPMplus dashboard URL?(normally ends in :81)" 8 64 ${NPM_URL:-https://192.168.0.1:81} --title "NPM URL" 3>&1 1>&2 2>&3); then
+      if ! curl -k -s -f "${NPM_URL}/api/" > /dev/null; then
+        whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "⚠ this URL doesnt seem to resolve properly" 8 78
+      else
+        if NPM_TOKEN=$(whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --inputbox "Whats your NPM API Token?(leave blank if you dont have one)" 8 64 ${NPM_TOKEN:-} --title "NPM API Token" 3>&1 1>&2 2>&3); then
+          if [ "$NPM_TOKEN" == "" ]; then
+            if NPM_USER=$(whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --inputbox "Whats your NPM login email?(so we can generate a API Token)" 8 64 "your@email.com" --title "NPM USER" 3>&1 1>&2 2>&3); then
+              if [ "$NPM_USER" == "" ]; then
+                whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "⚠ NPM email has to be set" 8 58
+              elif [[ ${#NPM_USER} -gt 40 ]]; then
+                whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "⚠ NPM email length should not exceed 40 characters." 8 58
+              elif [[ ! $NPM_USER =~ .+@.+ ]]; then
+                whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "⚠ NPM email address is invalid." 8 58
+              else
+                if NPM_PASS=$(whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --inputbox "Whats your NPM login password?(so we can generate a API Token)" 8 68 "yourpassword" --title "NPM PASS" 3>&1 1>&2 2>&3); then
+                  if [ "$NPM_PASS" == "" ]; then
+                    whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "⚠ password has to be set" 8 58
+                  elif [ ${#NPM_PASS} -lt 8 ]; then
+                    whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "⚠ password is too short, needs to be over 8 characters" 8 64
+                  else
+                    if curl -k -s -f "${NPM_URL}/api/" > /dev/null; then
+                      NPM_TOKEN=$(curl -k -s -m 10 "$NPM_URL/api/tokens" -H "Content-Type: application/json; charset=UTF-8" --data-raw "{\"identity\":\"$NPM_USER\",\"secret\":\"$NPM_PASS\",\"expiry\":\"50y\"}" | jq -r '.token // "failed"' 2>/dev/null || echo "failed" )
+                    else 
+                      NPM_TOKEN="failed"
+                    fi
+                    if [ "$NPM_TOKEN" != "failed" ]; then
+                      echo -e "${DGN}NPM URL set to: ${BGN}$NPM_URL${CL}"
+                      echo -e "${DGN}NPM token test result: ${BGN}CREATED${CL}${DGN}, save the below API token for future use.${CL}"
+                      echo "$NPM_TOKEN"
+                      read -n 1 -s -r -p "Press any key to continue..."
+                      break
+                    else
+                      whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "⚠ Token creation did not work \nresponded with $NPM_TOKEN" 10 64
+                    fi
+                  fi
+                fi
+              fi
+            fi
+          else
+            if curl -k -s -f "$NPM_URL/api/" > /dev/null; then
+              NPM_CHECK_RESPONSE=$(curl -k -s -m 10 -X GET -H "Content-Type: application/json; charset=UTF-8" -H "Authorization: Bearer $NPM_TOKEN" $NPM_URL/api/users/me | jq -r '.email // "no email entry"' 2>/dev/null || echo "no json output" )
+            else 
+              NPM_CHECK_RESPONSE="no response from URL"
+            fi
+            if [[ $NPM_CHECK_RESPONSE =~ .+@.+ ]]; then
+              echo -e "${DGN}NPM URL set to: ${BGN}$NPM_URL${CL}"
+              echo -e "${DGN}NPM token test result: ${BGN}PASSED${CL}${DGN}, API token linked to email $NPM_CHECK_RESPONSE${CL}"
+              break
+            else
+              whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "⚠ Token did not work, response was:
+$NPM_CHECK_RESPONSE" 8 64
+            fi
+          fi
+        fi
+      fi
+    else
+      exit
+    fi
+  done
+}
+
+
+function dns_server_installer() {
+
+  if ! dpkg -s apt-utils &> /dev/null; then
+    msg_info_ "installing apt-utils...                                                                                  "
+      apt-get update >/dev/null 2>&1
+      apt-get install -y apt-utils 2>&1 | awk '{ printf "\r\033[K   installing apt-utils.. "; printf "%s", $0; fflush() }'
+    msg_ok "apt-utils installed."
+  fi
+
+  if ! command -v lsof &> /dev/null; then
+    msg_info_ "installing lsof...                                                                                  "
+      apt-get update >/dev/null 2>&1
+      apt-get install -y lsof 2>&1 | awk '{ printf "\r\033[K   installing lsof.. "; printf "%s", $0; fflush() }'
+    msg_ok "lsof installed."
+  fi
+
+  if ! command -v node &> /dev/null; then
+    msg_info_ "installing nodejs...                                                                                  "
+      apt-get update | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      apt-get install -y ca-certificates curl gnupg | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      mkdir -p /etc/apt/keyrings | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+
+      NODE_MAJOR=20
+      echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      apt-get update | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      apt-get -y install nodejs | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+    msg_ok "nodejs installed."
+  else
+    NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d. -f1)
+    if [ "$NODE_VERSION" -lt 20 ]; then
+      apt-get update | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      apt-get install -y ca-certificates curl gnupg | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      mkdir -p /etc/apt/keyrings | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+
+      NODE_MAJOR=20
+      echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      apt-get update | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      apt-get -y install nodejs | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      msg_ok "nodejs updated to newest."
+    fi
+  fi
+
+  if ! command -v npm &> /dev/null; then
+    msg_info_ "installing npm...                                                                                  "
+      apt-get update | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      apt-get install -y ca-certificates curl gnupg | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      mkdir -p /etc/apt/keyrings | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+
+      NODE_MAJOR=20
+      echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      apt-get update | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+      apt-get -y install nodejs | awk '{ printf "\r\033[K   installing node.. "; printf "%s", $0; fflush() }'
+    msg_ok "npm installed, may need loging out and back in to take effect"
+  fi
+
+  if [ "$DNS_ID_TYPE" == "qemu" ]; then
+    msg_info_ "checking port 53"
+    if lsof -i :53 > /dev/null 2>&1; then
+      echo "Port 53 is in use. checking to see if its systemd-resolved"
+      PROCESS_INFO=$(lsof -i :53 -Fpcn | awk -F: '/^p/{pid=$2} /^c/{command=$2} /^n/{name=$2; print pid, command, name}')
+      if echo "$PROCESS_INFO" | grep -q "systemd-resolved"; then
+        sudo systemctl stop systemd-resolved
+        # Verify if systemd-resolved was stopped successfully
+        if [ $? -eq 0 ]; then
+            echo "systemd-resolved stopped successfully."
+
+            # Check if port 53 is now free
+            if ! lsof -i :53 > /dev/null 2>&1; then
+                msg_ok "Port 53 is now free. adding fallback nameserver to /etc/resolv.conf"
+                # Add missing DNS servers
+                DNS_SERVERS=("1.1.1.1" "8.8.8.8")
+                for DNS in "${DNS_SERVERS[@]}"; do
+                  if ! grep -q "^nameserver $DNS$" /etc/resolv.conf; then
+                    echo "nameserver $DNS" >> /etc/resolv.conf
+                  fi
+                done
+            else
+                msg_error "stopping systemd-resolved Failed to free port 53. Another process may still be using it. process list: $PROCESS_INFO"
+            fi
+        else
+            msg_error "Failed to stop systemd-resolved. Check permissions or if the service exists. process list: $PROCESS_INFO"
+        fi
+      else
+        msg_error "port 53 is not being used by systemd-resolved, unable to resolve issue, process is $PROCESS_INFO"
+      fi
+    else
+      msg_ok "Port 53 is free. No action needed."
+    fi
+  else
+    msg_info_ "checking port 53"
+    if lsof -i :53 > /dev/null 2>&1; then
+      msg_ok "Port 53 is in use. but we are in CT so its ok..."
+    fi
+    msg_ok "port 53 is not in use"
+  fi
+
+  npm install -g npm@latest
+  npm install -g express express-rate-limit node-dns dns2 node-forge pm2
+  pm2 install pm2-logrotate
+  sudo wget -q -O /root/dns-api.js https://gadget78.uk/dns-api.js
+  export PM2_HOME="/root/.pm2"
+  export NODE_PATH=$(npm root -g)
+
+cat <<EOF > /root/ecosystem.config.js
+module.exports = {
+  apps: [
+    {
+      name: 'dnsapi',
+      script: '/root/dns-api.js',
+      cwd: '/root',
+      env: {
+        PM2_HOME: '$PM2_HOME',
+        NODE_PATH: '$NODE_PATH',
+      },
+    },
+  ],
+};
+EOF
+
+  PM2_HOME="$PM2_HOME" pm2 start /root/ecosystem.config.js
+  PM2_HOME="$PM2_HOME" pm2 startup systemd -u root
+  PM2_HOME="$PM2_HOME" pm2 save
+
+  echo 
+  read -n 1 -s -r -p "Press any key to continue (next step is to setup API proxy entry)..."
+}
+
+
+function install_dnsserver() {
+  clear
+  if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "DNS server system" --yesno "Do you want to (re)Install the evernode DNS server system?" 10 64 --yes-button "(re)install" --no-button "exit" ); then
+    if ! [ "${DNS_ID_TYPE:-}" = "lxc" ] || [ "${DNS_ID_TYPE:-}" == "quemu" ]; then
+      cluster_resources=$(pvesh get /cluster/resources --output-format=json)
+      while true; do
+        if DNS_ID=$(whiptail --backtitle "Proxmox VE Helper Scripts" --inputbox "Enter your NPMplus CT/VM ID" 8 58 "100" --title "CT/VM ID" 3>&1 1>&2 2>&3); then
+          if ! [[ $DNS_ID =~ $INTEGER ]]; then
+            whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "⚠ ID MUST BE AN INTEGER NUMBER" 8 58
+          elif ! jq -r '.[].vmid' <<< "$cluster_resources" | grep -q "^$DNS_ID$"; then
+            whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "ID ${DNS_ID}, doesnt exist" 8 58
+          elif [[ $(jq -r ".[] | select(.vmid == $DNS_ID) | .status" <<< "$cluster_resources") != "running" ]]; then
+            whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "CT ID ${DNS_ID}, needs to be running" 8 58
+          elif [[ $(jq -r ".[] | select(.vmid == $DNS_ID) | .type" <<< "$cluster_resources") != "lxc" ]] && ! qm guest cmd $DNS_ID ping > /dev/null 2>&1; then
+            whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "ID ${DNS_ID}, is a VM, but doesnt have a running guest agent" 8 58
+          else
+            break
+          fi
+        else
+          exit-script
+        fi
+      done
+      DNS_ID_TYPE=$(jq -r ".[] | select(.vmid == $DNS_ID) | .type" <<< "$cluster_resources") && msg_ok "will now install the DNS system into VMID, $DNS_ID, which is a $DNS_ID_TYPE container" || msg_error "unable to identify cotainer type of ID $DNS_ID"
+    fi
+
+    if [[ "$DNS_ID_TYPE" == "lxc" ]]; then
+      lxc-attach -n "$DNS_ID" -- bash -c "$(declare -f msg_info_); $(declare -f msg_error); $(declare -f msg_ok); $(declare -f dns_server_installer); export DNS_ID_TYPE=$DNS_ID_TYPE; dns_server_installer" && msg_ok "DNS server and API successfully (re)installed" || { msg_error "fault setting up container"; exit; }
+      dns_server_ip=$(lxc-info -n $DNS_ID -iH | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}' | grep -vE '^172\.17\.')
+    else
+      msg_info_ "${DGN}VM detected and running, connecting and (re)installing DNS system...${CL}"
+      # Execute the command on the guest VM and capture the JSON response
+      UPDATE_response=$(qm guest exec $DNS_ID --timeout 180 -- bash -c "$(declare -f msg_info_); $(declare -f msg_error); $(declare -f msg_ok); export DNS_ID_TYPE=$DNS_ID_TYPE; export PM2_HOME=\"/root/.pm2\"; export NODE_PATH=\"/usr/lib/node_modules\"; $(declare -f dns_server_installer); dns_server_installer" 2>&1)
+
+      # Parse JSON response to check if command succeeded
+      UPDATE_error=$( { echo "$UPDATE_response" | jq -r '.["exitcode"]' || { echo "UPDATE_error capture failed"; true; }; } )
+      UPDATE_output=$( { echo "$UPDATE_response" | jq -r '.["out-data"]' || { echo "UPDATE_ouput capture failed"; true; }; } )
+
+      if [[ "$UPDATE_error" == "0" ]]; then
+          msg_ok "VM $DNS_ID: Updated succeeded." && echo -e "${DGN}Output:${CL}" && echo "$UPDATE_output"
+      else
+          msg_error "VM $DNS_ID: Update had a failure. Error message: full response=$UPDATE_response -- error=$UPDATE_error -- output=$UPDATE_output" 
+      fi
+      dns_server_ip=$(qm guest exec $DNS_ID -- bash -c "hostname -I | cut -d' ' -f1" | jq -r '.["out-data"]' | xargs)
+    fi
+
+    if (whiptail --backtitle "Proxmox VE Helper Scripts" --title "DNS server system" --yesno "add/update the proxyhost forwarder to NPMplus?" 10 64 --yes-button "Add/Update" --no-button "exit" ); then
+      touch /root/.deployenv
+      source /root/.deployenv
+      BASE_DOMAIN="${BASE_DOMAIN:-yourdomain.com}"
+      while true; do
+        if BASE_DOMAIN=$(whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --inputbox "Set the base domain of your evernodes (part after the subdomain)" 8 68 "$BASE_DOMAIN" --title "domain" 3>&1 1>&2 2>&3); then
+          if [ -z "$BASE_DOMAIN" ]; then
+              whiptail --backtitle "Proxmox VE Helper Scripts" --msgbox "base domain needs to be set" 8 58
+          else
+              echo -e "${DGN}Using base domain: ${BGN}$BASE_DOMAIN${CL}"
+              break
+          fi
+        else
+          exit-script
+        fi
+      done
+      dns_server_api="dnsapi.${BASE_DOMAIN}"
+
+      npmplus_setup
+
+      # Get/Set NPM_CERT_ID (TLS file)
+      NPM_CERT_ID_WILD="false"
+      NPM_CERT_LIST=$(curl -k -s -m 100 -X GET -H "Content-Type: application/json; charset=UTF-8" -H "Authorization: Bearer $NPM_TOKEN" $NPM_URL/api/nginx/certificates || echo "" )
+      NPM_CERT_ID=$(echo "$NPM_CERT_LIST" | jq -r '[.[] | select(.nice_name? == "'"$dns_server_api"'") | .id // empty] | if length == 0 then "" else .[] end' || echo "" )
+      if [ -z "$NPM_CERT_ID" ]; then # check for wildcard domain too
+          NPM_CERT_ID=$(echo "$NPM_CERT_LIST" | jq -r '[.[] | select(.nice_name? == "*.'"${dns_server_api#*.}"'") | .id // empty] | if length == 0 then "" else .[] end' || echo "" )
+          if [ -n "$NPM_CERT_ID" ]; then echo -e "${DGN}Using a wildcard SSL${CL}"; NPM_CERT_ID_WILD="true"; fi
+      fi
+      if [[ -z "$NPM_CERT_ID" || "$NPM_CERT_ID" == "null" ]]; then # SSL not found, needs setting up...
+        if [[ -z "$CERT_EMAIL" ]]; then CERT_EMAIL="your@email.com"; fi
+        while true; do
+          if CERT_EMAIL=$(whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --inputbox "Set your SSL certificate email " 8 58 "$CERT_EMAIL" --title "certificate email" 3>&1 1>&2 2>&3); then
+            if [[ ${#CERT_EMAIL} -gt 40 ]]; then
+              whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "Email address length should not exceed 40 characters." 8 58
+            elif [[ ! $CERT_EMAIL =~ .+@.+ ]]; then
+              whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "Email address is invalid." 8 58
+            else
+              echo -e "${DGN}Using email address for certificate : ${BGN}$CERT_EMAIL${CL}"
+              break
+            fi
+          else
+            exit-script
+          fi
+        done
+        NPM_CERT_ADD=$(curl -k -s -m 100 -X POST -H "Content-Type: application/json; charset=UTF-8" -H "Authorization: Bearer $NPM_TOKEN" -d '{"provider":"letsencrypt","nice_name":"'"$dns_server_api"'","domain_names":["'"$dns_server_api"'"],"meta":{"letsencrypt_email":"'"$NPM_CERT_EMAIL"'","letsencrypt_agree":true,"dns_challenge":false}}' $NPM_URL/api/nginx/certificates ) || echo "failed to create certificate for DNS server API, this WILL cause issues. ERROR; debug: $NPM_CERT_ADD"
+        NPM_CERT_ID=$(jq -r '.id' <<< "$NPM_CERT_ADD") && echo -e "${DGN}created new certificate for host domain $dns_server_api, ID is $NPM_CERT_ID${CL}" || msg_error "failed to find certificate ID, this WILL cause issues. ERROR; debug1: $NPM_CERT_ADD debug2: $NPM_CERT_ID"
+      else
+        echo -e "${DGN}Using existing certificate for host domain $dns_server_api, with ID:$NPM_CERT_ID   WILDCARD:$NPM_CERT_ID_WILD${CL}"
+      fi
+      # Setup proxy Host
+      NPM_PROXYHOSTS_LIST=$( { curl -k -s -m 100 -X GET -H "Content-Type: application/json; charset=UTF-8" -H "Authorization: Bearer $NPM_TOKEN" $NPM_URL/api/nginx/proxy-hosts || { msg_error "something went wrong getting NPM list of proxy hosts"; NPM_PROXYHOSTS_LIST={}; }; } )
+      NPM_PROXYHOSTS_ID=$( { echo "$NPM_PROXYHOSTS_LIST" | jq -r '.[] | select(.domain_names[] == "'"$dns_server_api"'") | .id' || echo ""; } )
+      if [ "$NPM_PROXYHOSTS_ID" == "" ]; then
+          echo -e "${DGN}adding new proxy host domain $dns_server_api using NPM_CERT_ID: $NPM_CERT_ID${CL}"
+          NPM_ADD_RESPONSE=$( { curl -k -s -m 100 -X POST -H "Content-Type: application/json; charset=UTF-8" -H "Authorization: Bearer $NPM_TOKEN" -d '{"domain_names":["'"$dns_server_api"'"],"forward_host":"'"$dns_server_ip"'","forward_port":8443,"access_list_id":0,"certificate_id":'"$NPM_CERT_ID"',"ssl_forced":1,"caching_enabled":0,"block_exploits":1,"advanced_config":"","meta":{"letsencrypt_agree":true,"nginx_online":true},"allow_websocket_upgrade":1,"http2_support":0,"forward_scheme":"https","locations":[],"hsts_enabled":0,"hsts_subdomains":0}' $NPM_URL/api/nginx/proxy-hosts || { echo "something went wrong when adding $dns_server_api proxy host"; NPM_ADD_RESPONSE="error"; }; } ) 
+          NPM_ADD_RESPONSE_CHECK=$(jq -r '.enabled // "no enabled entry"' <<< "$NPM_ADD_RESPONSE" || echo "jq error, no json output?")
+          if [[ "$NPM_ADD_RESPONSE_CHECK" == "1" || "$NPM_ADD_RESPONSE_CHECK" == "true" ]]; then
+              msg_ok "added new dns server API to NPM+ with domain $dns_server_api${CL}"
+              NPM_PROXYHOSTS_ID=$( echo "$NPM_ADD_RESPONSE" | jq -r '.id')
+          else
+              msg_error "failed to add dns server API domain on NPM+ $dns_server_api, this will cause issues connecting via this domain. (debug_check:$NPM_ADD_RESPONSE_CHECK   debug_response:$NPM_ADD_RESPONSE )"
+          fi
+      else
+          echo -e "${DGN}proxy host already on NPM domain $dns_server_api, updating (using a NPM_CERT_ID: $NPM_CERT_ID)..."
+          NPM_EDIT_RESPONSE=$( { curl -k -s -m 100 -X PUT -H "Content-Type: application/json; charset=UTF-8" -H "Authorization: Bearer $NPM_TOKEN" -d '{"domain_names":["'"$dns_server_api"'"],"forward_host":"'"$dns_server_ip"'","forward_port":8443,"access_list_id":0,"certificate_id":'"$NPM_CERT_ID"',"ssl_forced":1,"caching_enabled":0,"block_exploits":1,"advanced_config":"","meta":{"letsencrypt_agree":true,"nginx_online":true},"allow_websocket_upgrade":1,"http2_support":0,"forward_scheme":"https","locations":[],"hsts_enabled":0,"hsts_subdomains":0}' $NPM_URL/api/nginx/proxy-hosts/$NPM_PROXYHOSTS_ID || { echo "something went wrong when updating $dns_server_api proxy host"; NPM_EDIT_RESPONSE="error"; }; })
+          NPM_EDIT_RESPONSE_CHECK=$(jq -r '.enabled // "no enabled entry"' <<< "$NPM_EDIT_RESPONSE" || echo "jq error, no json output?")
+          if [[ "$NPM_EDIT_RESPONSE_CHECK" == "1" || "$NPM_EDIT_RESPONSE_CHECK" == "true" ]]; then
+              msg_ok "updated proxy host with domain $dns_server_api"
+          else
+              msg_error "failed to edit proxy host domain on NPM+, this will cause issues connecting via this domain. ( debug_check:$NPM_EDIT_RESPONSE_CHECK    debug_response:$NPM_EDIT_RESPONSE )"
+          fi
+      fi
+
+    else
+      whiptail --backtitle "Proxmox VE Helper Scripts: evernode deploy script $ver" --msgbox "you have chosen NOT to auto setup NPM+,
+ you will have to manually add a forwarder, or a proxyhost in NPM+,
+ using a domain of htps://dnsapi.yourbasedomain.com
+ to IP $dns_server_ip, and port 8443
+(also seperately, port forward port 53 for the DNS server)" 12 90
+    fi
+
+    return
+  fi
+}
+
+
+
+###################################################################################
+function xahau_script() {
+    msg_info_ "starting xahau node script..."
     bash -c "$(wget -qLO - https://raw.githubusercontent.com/gadget78/xahl-node/main/setup.sh)"
     msg_ok "install/update complete."
     exit
@@ -1230,18 +1860,23 @@ function update_script() {
 
 ###################################################################################
 function evernode_deploy_script() {
-  export ENTRY_STRING=$(curl -s $gadget_encrypt | base64 | tr '+/' '-_' | tr -d '=' )
-  DEPLOY_STATUS=$(curl -o /dev/null -s -w "%{http_code}\n" https://deploy.zerp.network/$ENTRY_STRING.sh)
+  export ENTRY_STRING=$(curl -s $gadget_encrypt | base64 | tr '+/' '-_' | tr -d '=' ) || { ENTRY_STRING="string_fail" ; true; }
+  DEPLOY_STATUS=$(curl -o /dev/null -s -w "%{http_code}\n" https://deploy.zerp.network/$ENTRY_STRING.sh) || { DEPLOY_STATUS="failed"; true; }
   if curl -s -f "https://deploy.zerp.network" > /dev/null; then
     if [ "$DEPLOY_STATUS" == "403" ]; then
-      whiptail --backtitle "Proxmox VE Helper Scripts: Wallet Management. version $ver" --msgbox "you dont have full access to the evernode deploy script,
-contact @gadget78 for access.
+      whiptail --backtitle "Proxmox VE Helper Scripts: Wallet Management. version $ver" --msgbox "you do not have full access to the evernode deploy script,
+contact @gadget78 to negotiate access.
 giving him this code $ENTRY_STRING" 10 58
       exit
     elif [ "$DEPLOY_STATUS" == "404" ]; then
       whiptail --backtitle "Proxmox VE Helper Scripts: Wallet Management. version $ver" --msgbox "deploy script not present ?
 contact @gadget78 with your code $ENTRY_STRING
 or just try again in 15 mins" 10 58
+      exit
+    elif [ "$DEPLOY_STATUS" == "failed" ]; then
+      whiptail --backtitle "Proxmox VE Helper Scripts: Wallet Management. version $ver" --msgbox "failed connecting to deploy server,
+contact @gadget78 for help.
+code tried = $ENTRY_STRING" 10 58
       exit
     else
       bash -c "$(wget -qLO - https://deploy.zerp.network/$ENTRY_STRING.sh)" || true
@@ -1260,12 +1895,13 @@ giving him this code $ENTRY_STRING" 10 58
 
 function start_() {
   if command -v pveversion >/dev/null 2>&1; then
-    if MODULE=$(whiptail --backtitle "Proxmox VE Helper Scripts: Wallet Management. version $ver" \
-                  --title "ProxMox detected..." \
+    if MODULE=$(whiptail --backtitle "Proxmox VE Helper Scripts: Deploy Management. version $ver" \
+                  --title "Proxmox detected..." \
                   --menu "Which module do you want to start?" 12 42 4 \
                   "1" "Wallet Management" \
                   "2" "Evernode Deployment" \
-                  "3" "Install NPMplus" \
+                  "3" "Install/Update NPMplus" \
+                  "4" "(re)Install DNS server system" \
                   --ok-button "Select" \
                   --cancel-button "Exit" \
                   3>&1 1>&2 2>&3); then
@@ -1275,6 +1911,8 @@ function start_() {
         evernode_deploy_script
       elif [ "$MODULE" == "3" ]; then
         install_npmplus
+      elif [ "$MODULE" == "4" ]; then
+        install_dnsserver
       fi
     else
       exit-script
@@ -1282,28 +1920,70 @@ function start_() {
   fi
 
   if ! command -v pveversion >/dev/null 2>&1; then
-    if MODULE2=$(whiptail --backtitle "Proxmox VE Helper Scripts: Wallet Management. version $ver" \
-                  --title "ProxMox NOT detected..." \
-                  --menu "Which module do you want to start?" 10 42 3 \
+    if MODULE2=$(whiptail --backtitle "Proxmox VE Helper Scripts: Deploy Management. version $ver" \
+                  --title "Proxmox NOT detected..." \
+                  --menu "Which module do you want to start?" 12 48 5 \
                   "1" "Wallet Management" \
-                  "2" "Xahau Server install or Update" \
+                  "2" "Xahau Server Install/Update" \
+                  "3" "NPMplus Install/Update" \
+                  "4" "(re)install DNS server system" \
+                  "5" "setup NPM+ for a standalone(VPS) evernode" \
                   --ok-button "Select" \
                   --cancel-button "Exit" \
                   3>&1 1>&2 2>&3); then
       if [ "$MODULE2" == "1" ]; then
         wallet_management_script
-      else
-        update_script
+      elif [ "$MODULE2" == "2" ]; then
+        xahau_script
+      elif [ "$MODULE2" == "3" ]; then
+        bash -c "$(wget -qLO - https://gadget78.uk/npmplus-install.sh)" || { msg_error "fault setting up container"; exit; }
+      elif [ "$MODULE2" == "4" ]; then
+        if systemctl is-active --quiet qemu-guest-agent; then 
+          export DNS_ID_TYPE="quemu"
+        else
+          export DNS_ID_TYPE="lxc"
+        fi
+        install_dnsserver
+      elif [ "$MODULE2" == "5" ]; then
+        npmplus_setup
+
+        HOST_ADDRESS=$(jq -r '.hp.host_address' /etc/sashimono/sa.cfg)
+        BASE_DOMAIN=${HOST_ADDRESS#*.}
+
+        NPM_CERT_ID_WILD="false"
+        NPM_CERT_LIST=$(curl -k -s -m 100 -X GET -H "Content-Type: application/json; charset=UTF-8" -H "Authorization: Bearer $NPM_TOKEN" $NPM_URL/api/nginx/certificates || echo "" )
+        NPM_CERT_ID=$(echo "$NPM_CERT_LIST" | jq -r '[.[] | select(.nice_name? == "'"$HOST_ADDRESS"'") | .id // empty] | if length == 0 then "" else .[] end' || echo "" )
+        if [ -z "$NPM_CERT_ID" ]; then # check for wildcard domain
+            NPM_CERT_ID=$(echo "$NPM_CERT_LIST" | jq -r '[.[] | select(.nice_name? == "*.'"$BASE_DOMAIN"'") | .id // empty] | if length == 0 then "" else .[] end' || echo "" )
+            if [ -n "$NPM_CERT_ID" ]; then echo -e "${DGN}Using a wildcard SSL${CL}"; NPM_CERT_ID_WILD="true"; fi
+        fi
+        jq '.proxy.tls_type = "NPMplus" |
+          .proxy.npm_url = "'"$NPM_URL"'" |
+          .proxy.wildcard = "'"$NPM_CERT_ID_WILD"'" |
+          .proxy.npm_tokenPath = "/home/sashimbxrpl/.evernode-host/.host-account-secret.key" |
+          .proxy.blacklist = [ "'"$BASE_DOMAIN"'" ]' \
+          /etc/sashimono/mb-xrpl/mb-xrpl.cfg > /etc/sashimono/mb-xrpl/mb-xrpl.cfg.backup \
+        && mv /etc/sashimono/mb-xrpl/mb-xrpl.cfg.backup /etc/sashimono/mb-xrpl/mb-xrpl.cfg \
+        && jq '.npm.token = "'"$NPM_TOKEN"'"' $(jq -r '.proxy.npm_tokenPath' /etc/sashimono/mb-xrpl/mb-xrpl.cfg) > $(jq -r '.proxy.npm_tokenPath' /etc/sashimono/mb-xrpl/mb-xrpl.cfg).backup && mv $(jq -r '.proxy.npm_tokenPath' /etc/sashimono/mb-xrpl/mb-xrpl.cfg).backup $(jq -r '.proxy.npm_tokenPath' /etc/sashimono/mb-xrpl/mb-xrpl.cfg) \
+        && msg_ok "/etc/sashimono/mb-xrpl/mb-xrpl.cfg file edited to set these proxy detils; NPM_URL to '"$NPM_URL"', wildcard set to $NPM_CERT_ID_WILD, blacklist domain(s) set to $BASE_DOMAIN, and entry to npm_tokenPath" \
+        && msg_ok "$(jq -r '.proxy.npm_tokenPath' /etc/sashimono/mb-xrpl/mb-xrpl.cfg) file edited to add above NPMplus token" \
+        || echo "FAILED to add or update NPM details"
       fi
     else
+      echo "no input"
       exit-script
     fi
   fi
 }
 if ! command -v curl &> /dev/null; then
   echo "installing curl .... "
-  apt-get update >/dev/null 2>&1
-  apt-get install -y curl 2>&1
+  apt-get update >/dev/null 2>&1 | awk '{ printf "\r\033[K   updating.. "; printf "%s", $0; fflush() }'
+  apt-get install -y curl 2>&1 | awk '{ printf "\r\033[K   installing curl.. "; printf "%s", $0; fflush() }'
+fi
+if ! command -v whiptail &> /dev/null; then
+  echo "installing whiptail .... "
+  apt-get update >/dev/null 2>&1 | awk '{ printf "\r\033[K   updating.. "; printf "%s", $0; fflush() }'
+  apt-get install -y whiptail 2>&1 | awk '{ printf "\r\033[K   installing whiptail.. "; printf "%s", $0; fflush() }'
 fi
 export timezone=$(cat /etc/timezone)
 color

@@ -32,7 +32,7 @@ const TICK = `${GN}✓${CL}`
 const CROSS=`${RD}✗${CL}`
 
 //...............................................................................................................................................................................................
-// varible setups  ..............................................................................................................................................................................
+// variable setups  ..............................................................................................................................................................................
 
 const command = process.argv.slice(2)[0];
 const run_wallet_setup = process.env.run_wallet_setup === 'true' ? true : false;
@@ -255,7 +255,7 @@ async function monitor_balance(){
             var { engine_result: xahRefillTxResult }  = await client.send({ command:'submit', 'tx_blob': xahRefillTxSigned });
             logVerbose(`\nfee auto adjust --> feeStartAmount:${feeStartAmount} feeAmount:${feeAmount} fee_max_amount:${fee_max_amount} feeResponse:${feeResponse.drops.open_ledger_fee} xahRefillTxTx:${JSON.stringify(xahRefillTx)}`);
           } else {
-            if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swopping to waiting for ledger end for fee calculations${CL}`) };
+            if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swapping to waiting for ledger end for fee calculations${CL}`) };
             networkInfo = await lib.utils.txNetworkAndAccountValues(xahaud, sourceAccount);
             xahRefillTx = { ...xahRefillTx, ...networkInfo.txValues };
             var { response: { engine_result: xahRefillTxResult } }  = await lib.signAndSubmit(xahRefillTx, xahaud, keypair);
@@ -345,7 +345,7 @@ async function monitor_balance(){
               var { engine_result: evrRefillTxResult }  = await client.send({ command:'submit', 'tx_blob': evrRefillTxSigned });
               logVerbose(`\nfee auto adjust --> feeStartAmount:${feeStartAmount} feeAmount:${feeAmount} fee_max_amount:${fee_max_amount} feeResponse:${feeResponse.drops.open_ledger_fee} evrRefillTxTx:${JSON.stringify(evrRefillTx)}`);
             } else {
-              if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swopping to waiting for ledger end for fee calculations${CL}`) };
+              if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swapping to waiting for ledger end for fee calculations${CL}`) };
               networkInfo = await lib.utils.txNetworkAndAccountValues(xahaud, sourceAccount);
               evrRefillTx = { ...evrRefillTx, ...networkInfo.txValues };
               var { response: { engine_result: evrRefillTxResult } }  = await lib.signAndSubmit(evrRefillTx, xahaud, keypair);
@@ -381,7 +381,7 @@ async function monitor_balance(){
     totalXAH = Number(totalXAH+(XAHsourceBalance/1000000));
     totalEVR = Number(totalEVR+(await GetEvrBalance(sourceAccount)));
     logVerbose(`${XAHsourceBalance} -- ${totalXAH} -- ${totalEVR} -- `);
-    consoleLog(`${GN}all accounts succesfully checked${CL}`);
+    consoleLog(`${GN}all accounts successfully checked${CL}`);
     consoleLog(`${GN}your total XAH amount in all accounts = ${totalXAH.toFixed(4)} XAH${CL}`);
     consoleLog(`${GN}your total EVR amount in all accounts = ${totalEVR.toFixed(4)} EVR${CL}`);
     consoleLog(" ---------------- ");
@@ -452,7 +452,7 @@ async function transfer_funds(){
             var { engine_result: xahResult }  = await client.send({ command:'submit', 'tx_blob': xahTxSigned });
             logVerbose(`\nfee auto adjust --> feeStartAmount:${feeStartAmount} feeAmount:${feeAmount} fee_max_amount:${fee_max_amount} feeResponse:${feeResponse.drops.open_ledger_fee} xahTx:${JSON.stringify(xahTx)}`);
           } else {
-            if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swopping to waiting for ledger end for fee calculations${CL}`) };
+            if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swapping to waiting for ledger end for fee calculations${CL}`) };
             networkInfo = await lib.utils.txNetworkAndAccountValues(xahaud, account);
             xahTx = { ...xahTx, ...networkInfo.txValues };
             var { response: { engine_result: xahResult } }  = await lib.signAndSubmit(xahTx, xahaud, keypair);
@@ -479,7 +479,7 @@ async function transfer_funds(){
 
         // check if the EVR balance is enough to sweep
         if (evrBalance <= minimum_evr_transfer) {
-          consoleLog(`${YW}EVR Balance is ${evrBalance} EVR, below minumum required of ${minimum_evr_transfer} to sweep EVR funds, skipping account...${CL}`);
+          consoleLog(`${YW}EVR Balance is ${evrBalance} EVR, below minimum required of ${minimum_evr_transfer} to sweep EVR funds, skipping account...${CL}`);
         } else {
           // sweep EVR to evrDestinationAccount
           let evrTx = {
@@ -505,7 +505,7 @@ async function transfer_funds(){
             var { engine_result: evrResult }  = await client.send({ command:'submit', 'tx_blob': evrTxSigned });
             logVerbose(`\nfee auto adjust --> feeStartAmount:${feeStartAmount} feeAmount:${feeAmount} fee_max_amount:${fee_max_amount} feeResponse:${feeResponse.drops.open_ledger_fee} xahTx:${JSON.stringify(evrTx)}`);
           } else {
-            if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swopping to waiting for ledger end for fee calculations${CL}`) };
+            if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swapping to waiting for ledger end for fee calculations${CL}`) };
             networkInfo = await lib.utils.txNetworkAndAccountValues(xahaud, account);
             evrTx = { ...evrTx, ...networkInfo.txValues };
             var { response: { engine_result: evrResult } }  = await lib.signAndSubmit(evrTx, xahaud, keypair);
@@ -536,7 +536,7 @@ async function transfer_funds(){
     consoleLog(" ");
   }
   if (tesSUCCESS){
-    consoleLog(`${GN}all accounts succesfully checked${CL}`)
+    consoleLog(`${GN}all accounts successfully checked${CL}`)
     consoleLog(" ---------------- ");
     consoleLog(" ");
     return 0
@@ -559,7 +559,7 @@ async function monitor_heartbeat() {
   hostMaxLeaseAmount = await parseFloat(heartbeatClient.config.rewardInfo.hostMaxLeaseAmount)
   hostReputationThreshold = await heartbeatClient.config.rewardConfiguration.hostReputationThreshold
   logVerbose("connecting to ledger/evernode registry, status:" + heartbeatClientstatus);
-  consoleLog("Evernode Info, Minimum instance count at :" + hostMinInstanceCount + " Max Lease amount at :" + hostMaxLeaseAmount + " and Reuputation threshold is at:" + hostReputationThreshold)
+  consoleLog("Evernode Info, Minimum instance count at :" + hostMinInstanceCount + " Max Lease amount at :" + hostMaxLeaseAmount + " and Reputation threshold is at:" + hostReputationThreshold)
   consoleLog(" ---------------- ");
 
   var accountIndex = 1;
@@ -620,7 +620,7 @@ async function checkAccountHeartBeat(account, accountIndex) {
   };
   if ((hostInfo.maxInstances < hostMinInstanceCount) || (hostInfo.leaseAmount > hostMaxLeaseAmount) || (hostInfo.hostReputation < hostReputationThreshold)) {
     if ( faultReason == "heartbeat" ) {
-      var faultReason = "heatbeat+reputation";
+      var faultReason = "heartbeat+reputation";
       consoleLog(`${CROSS} ${RD}and reputation fault detected${CL}`);
     } else { 
       var faultReason = "reputation"
@@ -652,7 +652,7 @@ async function handleFailure(account, accountFailed, filePath, accountIndex, hos
   consoleLog(`${CROSS}${RD} ALERT, DETECTED A EVERNODE FAULT DUE TO, ${faultReason}${CL}`);
 }
 
-// HEARBEAT send Notifications  ........................................................................................................................................................................
+// HEARTBEAT send Notifications  ........................................................................................................................................................................
 
 async function sendFailure(account, accountIndex, hostInfo, hostInfoSTR, faultReason) {
   if ( faultReason == "fault" ) {
@@ -708,9 +708,9 @@ async function sendPush(account, accountIndex, pushStatus, pushMSG) {
   try {
     const fetchResponse = await fetch(fetchURL);
     if (!fetchResponse.ok) {
-      consoleLog(`${RD}push notification NOT being recieved by robot :${fetchResponse.statusText}${CL}`);
+      consoleLog(`${RD}push notification NOT being received by robot :${fetchResponse.statusText}${CL}`);
     } else {
-    consoleLog(`push notification recieved by robot :${GN}${await fetchResponse.ok}${CL}`);
+    consoleLog(`push notification received by robot :${GN}${await fetchResponse.ok}${CL}`);
     }
   } catch (error) {
     consoleLog(`${RD}There was a problem with sending push notification to robot URL, error: ${error}${CL}`);
@@ -777,7 +777,7 @@ async function wallet_setup(){
             var { engine_result: xahResult }  = await client.send({ command:'submit', 'tx_blob': xahTxSigned });
             logVerbose(`\nfee auto adjust --> feeStartAmount:${feeStartAmount} feeAmount:${feeAmount} fee_max_amount:${Number(fee_max_amount)} fee_open_ledger_fee:${Number(feeResponse.drops.open_ledger_fee)} fee_base_fee:${feeResponse.drops.base_fee}`);
           } else {
-            if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swopping to waiting for ledger end for fee calculations${CL}`) };
+            if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swapping to waiting for ledger end for fee calculations${CL}`) };
             networkInfo = await lib.utils.txNetworkAndAccountValues(xahaud, sourceAccount);
             xahTx = { ...xahTx, ...networkInfo.txValues };
             var { response: { engine_result: xahResult } }  = await lib.signAndSubmit(xahTx, xahaud, keypair);
@@ -824,7 +824,7 @@ async function wallet_setup(){
               var { engine_result: trustlineResult } = await client.send({ command: 'submit', 'tx_blob': trustlineTxSigned });
               logVerbose(`\nfee auto adjust --> feeStartAmount:${feeStartAmount} feeAmount:${feeAmount} fee_max_amount:${fee_max_amount} fee_open_ledger_fee:${feeResponse.drops.open_ledger_fee} fee_base_fee:${feeResponse.drops.base_fee}`);
             } else {
-              if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swopping to waiting for ledger end for fee calculations${CL}`) };
+              if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swapping to waiting for ledger end for fee calculations${CL}`) };
               networkInfo = await lib.utils.txNetworkAndAccountValues(xahaud, account);
               trustlineTx = { ...trustlineTx, ...networkInfo.txValues };
               try {
@@ -886,7 +886,7 @@ async function wallet_setup(){
               var { engine_result: tokenResult } = await client.send({ command: 'submit', 'tx_blob': tokenTxSigned });
               logVerbose(`\nfee auto adjust --> feeStartAmount:${feeStartAmount} feeAmount:${feeAmount} fee_max_amount:${fee_max_amount} fee_open_ledger_fee:${feeResponse.drops.open_ledger_fee} fee_base_fee:${feeResponse.drops.base_fee}`);
             } else {
-              if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swopping to waiting for ledger end for fee calculations${CL}`) };
+              if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swapping to waiting for ledger end for fee calculations${CL}`) };
               networkInfo = await lib.utils.txNetworkAndAccountValues(xahaud, sourceAccount);
               tokenTx = { ...tokenTx, ...networkInfo.txValues };
               var { response: { engine_result: tokenResult } } = await lib.signAndSubmit(tokenTx, xahaud, keypair);
@@ -927,7 +927,7 @@ async function wallet_setup(){
             var { engine_result: regularResult } = await client.send({ command: 'submit', 'tx_blob': regularTxSigned });
             logVerbose(`\nfee auto adjust --> feeStartAmount:${feeStartAmount} feeAmount:${feeAmount} fee_max_amount:${fee_max_amount} fee_open_ledger_fee:${feeResponse.drops.open_ledger_fee} fee_base_fee:${feeResponse.drops.base_fee}`);
           } else {
-            if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swopping to waiting for ledger end for fee calculations${CL}`) };
+            if ( auto_adjust_fee == true ) { consoleLog(`${YW}maxfee limit reached, swapping to waiting for ledger end for fee calculations${CL}`) };
             networkInfo = await lib.utils.txNetworkAndAccountValues(xahaud, account);
             regularTx = { ...regularTx, ...networkInfo.txValues };
             try {

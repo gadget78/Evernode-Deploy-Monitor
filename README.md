@@ -21,11 +21,11 @@ accounts can be read from key_pair .txt files, or incorporated into the main .en
         - [Proxmox, and Evernode Deploy Script](#proxmox)
     - [or Manually](#2nd-manually)
 - [MONITOR MODULES](#monitor-modules)
-    - [1 wallet_setup](#1-wallet_setup) used to setup new un-activated wallets, so they are fully ready for evernode install (activating, settng trustline, sending EVR, settng regularkey, and will also push data to .env file)
+    - [1 wallet_setup](#1-wallet_setup) used to setup new un-activated wallets, so they are fully ready for evernode install (activating, setting trustline, sending EVR, setting regularkey, and will also push data to .env file)
     - [2 transfer_funds](#2-transfer_funds) Move all EVR/XAH from your node accounts to source account.
     - [3 monitor_balance](#3-monitor_balance) check and send EVR/XAH to your accounts when the balance is below a certain threshold (configurable).
     - [4 monitor_heartbeat](#4-monitor_heartbeat) checks hook heartbeats of your nodes, and sends an alert email in case no heartbeat was sent in the last N (configurable) minutes.
-    - [5 monitor_claimreward](#4-monitor_claimreward) checks if account is registered for balance adjustment rewards, if not registers, and if it is, checks the when it can claim, and cliam if it can.
+    - [5 monitor_claimreward](#4-monitor_claimreward) checks if account is registered for balance adjustment rewards, if not registers, and if it is, checks the when it can claim, and claim if it can.
 
 
 # How to Install
